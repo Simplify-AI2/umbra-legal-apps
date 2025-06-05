@@ -6,6 +6,10 @@ on:
     types:
       - completed
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
@@ -20,32 +24,42 @@ jobs:
       - name: Deploy to Remote VM
         env:
           GHCR_OWNER_LC: ${{ github.repository_owner }}
-          GHCR_USER: ${{ secrets.GHCR_USERNAME }}
-          GHCR_PAT: ${{ secrets.GHCR_TOKEN }}
         run: |
           GHCR_OWNER_LC=$(echo "$GHCR_OWNER_LC" | tr '[:upper:]' '[:lower:]')
 
-          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << EOF
+            export GHCR_USER="${{ secrets.GHCR_USERNAME }}"
+            export GHCR_PAT="${{ secrets.GHCR_TOKEN }}"
+            export GHCR_OWNER_LC="${GHCR_OWNER_LC}"
+
             echo "🔐 Logging in to GHCR..."
-            echo "${GHCR_PAT}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+            echo "\$GHCR_PAT" | docker login ghcr.io -u "\$GHCR_USER" --password-stdin
 
             echo "📦 Pull image from GHCR..."
-            docker pull ghcr.io/${GHCR_OWNER_LC}/umbra-legal-apps:latest
+            docker pull ghcr.io/\$GHCR_OWNER_LC/umbra-legal-apps:latest
 
-            echo "🧼 Stop and remove old container if any..."
+            echo "🧼 Stop and remove old container if exists..."
             docker stop umbra-legal-apps || true
             docker rm umbra-legal-apps || true
 
             echo "💾 Write .env file from secret..."
-            echo "${SERVICE_ENV}" > ~/.umbra.env
+            echo "${{ secrets.SERVICE_ENV }}" > ~/.umbra.env
+
+            echo "📖 Show .env file:"
+            cat ~/.umbra.env
 
             echo "🔁 Load PORT from .env"
-            PORT=$(grep '^PORT=' ~/.umbra.env | cut -d '=' -f2)
+            PORT=\$(grep '^PORT=' ~/.umbra.env | cut -d '=' -f2)
 
-            echo "🚀 Run container with dynamic port: \$PORT"
+            if [ -z "\$PORT" ]; then
+              echo "❌ ERROR: PORT not defined in .env"
+              exit 1
+            fi
+
+            echo "🚀 Run container on port \$PORT"
             docker run -d --name umbra-legal-apps \
               -p \$PORT:\$PORT \
               --env-file ~/.umbra.env \
               -v /root/.umbra-data:/data \
-              ghcr.io/${GHCR_OWNER_LC}/umbra-legal-apps:latest
+              ghcr.io/\$GHCR_OWNER_LC/umbra-legal-apps:latest
           EOF
