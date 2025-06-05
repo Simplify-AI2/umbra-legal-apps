@@ -57,7 +57,7 @@ jobs:
 
             echo "🚀 Run container on port \$PORT"
             docker run -d --name umbra-legal-apps \
-              -p \$PORT:\$PORT \
+              -p \$PORT:80 \
               --env-file ~/.umbra.env \
               -v /root/.umbra-data:/data \
               ghcr.io/$GHCR_OWNER_LC/umbra-legal-apps:latest
