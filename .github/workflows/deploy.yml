@@ -49,7 +49,7 @@ jobs:
             docker rm umbra-legal-apps || true
 
             echo "💾 Write .env file from secret..."
-            echo "\$SERVICE_ENV" > ~/.umbra.env
+            printf "%b\n" "\$SERVICE_ENV" | tr -d '\r' > ~/.umbra.env
 
             echo "📖 Show .env file:"
             cat ~/.umbra.env
@@ -61,6 +61,7 @@ jobs:
               echo "❌ ERROR: PORT not defined in .env"
               exit 1
             fi
+
 
             echo "🚀 Run container on port \$PORT"
             docker run -d --name umbra-legal-apps \
