@@ -12,7 +12,8 @@ export default defineConfig(({ mode }) => {
       // this ensures that the browser opens upon server start
       open: true,
       // this sets a default port to 3000
-      port: PORT
+      port: PORT,
+      host: '0.0.0.0' 
     },
     define: {
       global: 'window'

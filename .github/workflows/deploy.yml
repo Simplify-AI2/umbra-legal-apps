@@ -1,0 +1,65 @@
+name: Deploy to VM via SSH
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Deploy to Remote VM
+        env:
+          GHCR_OWNER_LC: ${{ github.repository_owner }}
+          GHCR_USER: ${{ secrets.GHCR_USERNAME }}
+          GHCR_PAT: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          GHCR_OWNER_LC=$(echo "$GHCR_OWNER_LC" | tr '[:upper:]' '[:lower:]')
+
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << EOF
+            echo "🔐 Logging in to GHCR..."
+            echo "$GHCR_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            echo "📦 Pull image from GHCR..."
+            docker pull ghcr.io/$GHCR_OWNER_LC/umbra-legal-apps:latest
+
+            echo "🧼 Stop and remove old container if any..."
+            docker stop umbra-legal-apps || true
+            docker rm umbra-legal-apps || true
+
+            echo "💾 Write .env file from secret..."
+            printf "%b\n" "${{ secrets.SERVICE_ENV }}" > ~/.umbra.env
+
+            echo "📖 .env content:"
+            cat ~/.umbra.env
+
+            echo "🔁 Load PORT from .env"
+            PORT=\$(grep '^PORT=' ~/.umbra.env | cut -d '=' -f2)
+
+            if [ -z "\$PORT" ]; then
+              echo "❌ ERROR: PORT not defined"
+              exit 1
+            fi
+
+            echo "🚀 Run container on port \$PORT"
+            docker run -d --name umbra-legal-apps \
+              -p \$PORT:80 \
+              --env-file ~/.umbra.env \
+              -v /root/.umbra-data:/data \
+              ghcr.io/$GHCR_OWNER_LC/umbra-legal-apps:latest
+          EOF
+
