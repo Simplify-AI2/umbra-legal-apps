@@ -53,9 +53,9 @@ const DashDefault = () => {
 
           console.log('Extracted PDF Text:', pdfText);
 
-          //const flowiseUrl = 'https://workflows.ximplify.id/api/v1/prediction/177a1fbd-7653-4334-8ca1-2dde95e1f5ae';
-          const flowiseUrl = 'https://workflows.ximplify.id/api/v1/prediction/0804fd86-1861-460c-afb1-c5761b646d62';
-                    
+          //const flowiseUrl = 'https://workflows.ximplify.id/api/v1/prediction/0804fd86-1861-460c-afb1-c5761b646d62';
+          const flowiseUrl = 'https://workflows.ximplify.id/api/v1/prediction/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
+
           const response = await fetch(flowiseUrl, {
             method: 'POST',
             headers: {
@@ -139,13 +139,13 @@ const DashDefault = () => {
       </Row>
       <Row>
         {otherSalesData.map((data, index) => (
-          <Col xl={6} xxl={6} key={index}>
+          <Col xl={data.title === 'AI Reviews' ? 12 : 6} xxl={data.title === 'AI Reviews' ? 12 : 6} key={index}>
             <Card>
               <Card.Body>
                 <h6 className="mb-4">{data.title}</h6>
                 {aiReviewContent ? (
                   <div className="ai-recommendations-content">
-                    <p className="m-b-0">{aiReviewContent}</p>
+                    <div dangerouslySetInnerHTML={{ __html: aiReviewContent }} />
                   </div>
                 ) : (
                   <div className="ai-recommendations-content">
