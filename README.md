@@ -57,6 +57,46 @@ yarn
 yarn start
 ```
 
+### (Optional) Using Nix Flakes
+
+This project provides a [Nix Flake](https://nixos.org/manual/nix/stable/command-ref/new-cli/nix3-flake.html) for easy and reproducible development environment setup.  
+With Nix, you don't need to install Node.js, Yarn, or Docker manually.
+
+**The following tools are available in the devShell:**
+- Node.js 20.x
+- Yarn
+- Docker CLI
+- Git
+- OpenSSH
+
+**How to use:**
+1. Make sure you have [Nix](https://zero-to-nix.com/start/install/) installed and flakes enabled.
+2. Enter the development shell:
+   ```sh
+   nix develop
+   ```
+3. Once inside the shell, continue as usual:
+   ```sh
+   yarn
+   yarn start
+   ```
+
+### Running with Docker
+
+You can also run this project using Docker, without installing Node.js or Yarn on your system.
+
+**Build the Docker image:**
+```sh
+docker build -t umbra-legal-apps .
+```
+
+**Run the container:**
+```sh
+docker run -it --rm -p 3000:80 umbra-legal-apps
+```
+- The app will be available at [http://localhost:3000](http://localhost:3000).
+- If you want to use a custom port, change the left side of `-p <host-port>:80`.
+
 ## Download
 
 - Datta Able Free
