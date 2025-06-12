@@ -64,6 +64,11 @@ const routes = [
       },
       {
         exact: 'true',
+        path: '/logout',
+        element: lazy(() => import('./views/logout'))
+      },
+      {
+        exact: 'true',
         path: '/basic/button',
         element: lazy(() => import('./views/ui-elements/basic/BasicButton'))
       },

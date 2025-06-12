@@ -35,7 +35,13 @@ const menuItems = {
           title: 'Litigation & Dispute Support',
           type: 'item',
           url: '#'
-        }
+        },
+        {
+          id: 'logout',
+          title: 'Logout',
+          type: 'item',
+          url: '/logout'
+        }        
       ]
     }
   ]

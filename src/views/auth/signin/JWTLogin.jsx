@@ -16,8 +16,10 @@ const AuthLogin = () => {
     try {
       setError('');
       setLoading(true);
-      await signIn(email, password);
-      navigate('/app/dashboard/default');
+      const { user } = await signIn(email, password);
+      if (user) {
+        navigate('/app/dashboard/default');
+      }
     } catch (err) {
       setError('Failed to sign in: ' + err.message);
     } finally {

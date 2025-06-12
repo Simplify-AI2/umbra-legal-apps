@@ -4,17 +4,60 @@ import { supabase } from '../config/supabase';
 const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState({ id: '1', email: 'user@example.com' }); // Mock authenticated user
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check active sessions and sets the user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          role: session.user.user_metadata.full_name
+        });
+      }
+      setLoading(false);
+    });
+
+    // Listen for changes on auth state (sign in, sign out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          role: session.user.user_metadata.full_name
+        });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const signIn = async (email, password) => {
-    // Bypass actual authentication
-    return { user: { id: '1', email } };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      throw error;
+    }
   };
 
   const signOut = async () => {
-    // Bypass actual signout
-    return;
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      throw error;
+    }
   };
 
   const value = {
@@ -26,7 +69,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
