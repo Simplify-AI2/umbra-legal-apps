@@ -107,7 +107,7 @@ const DashDefault = () => {
         <Col xl={12} xxl={12}>
           <Card>
             <Card.Header>
-              <Card.Title as="h5">Upload Contract File</Card.Title>
+              <Card.Title as="h5">Upload Contract File.</Card.Title>
             </Card.Header>
             <Card.Body>
               <Form onSubmit={handleFileUpload}>
