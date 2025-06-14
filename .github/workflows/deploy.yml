@@ -36,6 +36,12 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_TOKEN }}
+      
+      - name: Extract short commit SHA and lowercase repo owner
+        id: vars
+        run: |
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "GHCR_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
       - name: Build & push
         uses: docker/build-push-action@v5
@@ -43,7 +49,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ env.GHCR_OWNER_LC }}/umbra-legal-apps:latest
+            ghcr.io/${{ env.GHCR_OWNER_LC }}/workflows:latest
+            ghcr.io/${{ env.GHCR_OWNER_LC }}/workflows:${{ env.SHORT_SHA }}
 
   deploy:
     name: Deploy to Coolify
