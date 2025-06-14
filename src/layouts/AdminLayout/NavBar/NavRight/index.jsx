@@ -17,7 +17,7 @@ const NavRight = () => {
             width="40"
             height="40"
           />
-          <span>{user?.email || 'Guest'}</span>
+          <span>{user?.email || 'User'}</span>
         </Nav.Link>
       </Nav.Item>
     </Nav>
