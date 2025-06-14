@@ -43,7 +43,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/umbra-legal-apps:latest
+            ghcr.io/${{ env.GHCR_OWNER_LC }}/umbra-legal-apps:latest
 
   deploy:
     name: Deploy to Coolify
