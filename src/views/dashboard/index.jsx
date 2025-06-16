@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Form, Button, Spinner } from 'react-bootstrap';
 
 // Import PDF.js
@@ -17,6 +17,35 @@ const DashDefault = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [aiReviewContent, setAiReviewContent] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    // Add custom CSS to hide "Powered by Flowise" text
+    const style = document.createElement('style');
+    style.textContent = `
+      .flowise-powered-by {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Load the chatbot script
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.textContent = `
+      import Chatbot from "https://cdn.jsdelivr.net/npm/flowise-embed/dist/web.js"
+      Chatbot.init({
+        chatflowid: "29de46a3-2f2f-4bf5-ad8d-9c6b7c24f355",
+        apiHost: "https://workflows.ximplify.id",
+      })
+    `;
+    document.body.appendChild(script);
+
+    // Cleanup function to remove the script and style when component unmounts
+    return () => {
+      document.body.removeChild(script);
+      document.head.removeChild(style);
+    };
+  }, []);
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
@@ -158,7 +187,7 @@ const DashDefault = () => {
         ))}
       </Row>
       <Row>
-        <Col xl={12} xxl={12} className="text-end">
+        <Col xl={12} xxl={12} className="text-start">
           <Button variant="success" onClick={() => console.log('Generate New Contract File clicked')}>
             Generate New Contract File
           </Button>

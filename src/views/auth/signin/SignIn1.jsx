@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, Button, Alert } from 'react-bootstrap';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import umbraLogo from '../../../assets/images/UMBRA-logobig.png';
 
 import Breadcrumb from '../../../layouts/AdminLayout/Breadcrumb';
 
@@ -22,7 +23,7 @@ const Signin1 = () => {
           <Card className="borderless text-center">
             <Card.Body>
               <div className="mb-4">
-                <i className="feather icon-unlock auth-icon" />
+                <img src={umbraLogo} alt="UMBRA Logo" style={{ height: '60px', width: 'auto' }} />
               </div>
               <AuthLogin />
             </Card.Body>

@@ -53,9 +53,19 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
+      // First clear the local state
+      setUser(null);
+      
+      // Then attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        console.warn('Error during server-side logout:', error);
+        // Continue with logout process even if server-side logout fails
+      }
     } catch (error) {
+      console.error('Unexpected error during logout:', error);
+      // Ensure user state is cleared even if there's an error
+      setUser(null);
       throw error;
     }
   };

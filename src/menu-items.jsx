@@ -7,7 +7,7 @@ const menuItems = {
       icon: 'icon-navigation',
       children: [
         {
-          id: 'dashboard',
+          id: 'contract-management',
           title: 'Contract Management',
           type: 'item',
           url: '/contract-management'
