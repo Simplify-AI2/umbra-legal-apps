@@ -49,8 +49,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ env.GHCR_OWNER_LC }}/workflows:latest
-            ghcr.io/${{ env.GHCR_OWNER_LC }}/workflows:${{ env.SHORT_SHA }}
+            ghcr.io/${{ env.GHCR_OWNER_LC }}/legal-apps:latest
+            ghcr.io/${{ env.GHCR_OWNER_LC }}/legal-apps:${{ env.SHORT_SHA }}
 
   deploy:
     name: Deploy to Coolify
