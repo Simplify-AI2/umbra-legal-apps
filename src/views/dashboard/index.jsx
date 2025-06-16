@@ -84,7 +84,7 @@ const DashDefault = () => {
 
           //const flowiseUrl = 'https://workflows.ximplify.id/api/v1/prediction/0804fd86-1861-460c-afb1-c5761b646d62';
           // const flowiseUrl = 'https://workflows.ximplify.id/api/v1/prediction/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
-          const flowiseUrl = 'https://genai.ximplify.id/api/v1/prediction/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
+          const flowiseUrl = 'https://workflow.simplifygenai.id/api/v1/prediction/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
           //const flowiseUrl = 'https://genai.ximplify.id/api/v1/prediction/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
 
           //const flowiseUrl = 'https://workflows.ximplify.id/v2/agentcanvas/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
