@@ -18,7 +18,7 @@ const AuthLogin = () => {
       setLoading(true);
       const { user } = await signIn(email, password);
       if (user) {
-        navigate('/app/dashboard/default');
+        navigate('/contract-review');
       }
     } catch (err) {
       setError('Failed to sign in: ' + err.message);

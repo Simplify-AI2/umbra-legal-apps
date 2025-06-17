@@ -35,7 +35,7 @@ const routes = [
   {
     exact: 'true',
     path: '/',
-    element: () => <Navigate to="/contract-management" />
+    element: () => <Navigate to="/contract-review" />
   },
   {
     exact: 'true',
@@ -61,6 +61,11 @@ const routes = [
         exact: 'true',
         path: '/contract-management',
         element: lazy(() => import('./views/dashboard'))
+      },
+      {
+        exact: 'true',
+        path: '/contract-review',
+        element: lazy(() => import('./views/contract-review'))
       },
       {
         exact: 'true',

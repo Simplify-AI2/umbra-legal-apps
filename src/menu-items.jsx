@@ -6,11 +6,17 @@ const menuItems = {
       type: 'group',
       icon: 'icon-navigation',
       children: [
+        // {
+        //   id: 'contract-management',
+        //   title: 'Contract Management OLD',
+        //   type: 'item',
+        //   url: '/contract-management'
+        // },
         {
-          id: 'contract-management',
+          id: 'contract-review',
           title: 'Contract Management',
           type: 'item',
-          url: '/contract-management'
+          url: '/contract-review'
         },
         {
           id: 'corporate-governance',
