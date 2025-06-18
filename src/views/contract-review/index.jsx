@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useRef } from 'react';
 import { Row, Col, Card, Form, Button, Spinner, Table, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+=======
+import React, { useState, useEffect } from 'react';
+import { Row, Col, Card, Form, Button, Spinner, Table, Badge } from 'react-bootstrap';
+>>>>>>> 1578c6cde93a3a167e7b3e1b979428e0510e73f0
 
 // Import PDF.js
 import * as pdfjsLib from 'pdfjs-dist';
@@ -16,6 +21,7 @@ const ContractReview = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [reviewHistory, setReviewHistory] = useState([]);
   const [aiReviewContent, setAiReviewContent] = useState(null);
+<<<<<<< HEAD
   const aiReviewRef = useRef(null);
   const [originalPdfText, setOriginalPdfText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -31,6 +37,8 @@ const ContractReview = () => {
     }
     return result;
   };
+=======
+>>>>>>> 1578c6cde93a3a167e7b3e1b979428e0510e73f0
 
   useEffect(() => {
     // Add custom CSS to hide "Powered by Flowise" text
@@ -50,6 +58,7 @@ const ContractReview = () => {
       Chatbot.init({
         chatflowid: "29de46a3-2f2f-4bf5-ad8d-9c6b7c24f355",
         apiHost: "https://workflows.ximplify.id",
+<<<<<<< HEAD
         theme: {
           chatWindow: {
             showTitle: true,
@@ -72,6 +81,8 @@ const ContractReview = () => {
             },
           },
         },
+=======
+>>>>>>> 1578c6cde93a3a167e7b3e1b979428e0510e73f0
       })
     `;
     document.body.appendChild(script);
@@ -235,6 +246,7 @@ const ContractReview = () => {
     }
   };
 
+<<<<<<< HEAD
   // useEffect to add checkboxes after content is rendered
   useEffect(() => {
     if (aiReviewContent && aiReviewRef.current) {
@@ -1049,6 +1061,8 @@ const ContractReview = () => {
     }
   };
 
+=======
+>>>>>>> 1578c6cde93a3a167e7b3e1b979428e0510e73f0
   return (
     <React.Fragment>
       <Row>
@@ -1153,7 +1167,11 @@ const ContractReview = () => {
             </Card.Header>
             <Card.Body>
               {aiReviewContent ? (
+<<<<<<< HEAD
                 <div className="ai-review-content" ref={aiReviewRef}>
+=======
+                <div className="ai-review-content">
+>>>>>>> 1578c6cde93a3a167e7b3e1b979428e0510e73f0
                   <div dangerouslySetInnerHTML={{ __html: aiReviewContent }} />
                 </div>
               ) : (
@@ -1163,6 +1181,7 @@ const ContractReview = () => {
           </Card>
         </Col>
       </Row>
+<<<<<<< HEAD
 
       <Row>
         <Col xl={12} xxl={12} className="text-start">
@@ -1191,6 +1210,8 @@ const ContractReview = () => {
           </Button>
         </Col>
       </Row>
+=======
+>>>>>>> 1578c6cde93a3a167e7b3e1b979428e0510e73f0
     </React.Fragment>
   );
 };
