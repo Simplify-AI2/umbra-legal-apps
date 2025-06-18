@@ -55,18 +55,6 @@ const ContractReview = () => {
         apiHost: "https://workflow.simplifygenai.id/",
         theme: {
           chatWindow: {
-            showTitle: true,
-            showAgentMessages: true,
-            title: 'Simplify AI',
-            welcomeMessage: 'Hello!',
-            errorMessage: 'Error...',
-            backgroundColor: '#ffffff',
-            height: 500,
-            width: 400,
-            fontSize: 16,
-            clearChatOnReload: false, // If set to true, the chat will be cleared when the page reloads
-            sourceDocsTitle: 'Sources:',
-            renderHTML: true,
             footer: {
               textColor: '#303235',
               text: 'Powered by',
