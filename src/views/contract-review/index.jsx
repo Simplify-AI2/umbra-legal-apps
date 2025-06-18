@@ -8,6 +8,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import * as pdfjsLib from 'pdfjs-dist';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 
+// Import mammoth for .docx files
+import mammoth from 'mammoth';
+
 // Set worker source
 GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
@@ -49,7 +52,7 @@ const ContractReview = () => {
       import Chatbot from "https://cdn.jsdelivr.net/npm/flowise-embed/dist/web.js"
       Chatbot.init({
         chatflowid: "29de46a3-2f2f-4bf5-ad8d-9c6b7c24f355",
-        apiHost: "https://workflows.ximplify.id",
+        apiHost: "https://workflow.simplifygenai.id/",
         theme: {
           chatWindow: {
             showTitle: true,
@@ -87,6 +90,33 @@ const ContractReview = () => {
     setSelectedFile(event.target.files[0]);
   };
 
+  // Function to extract text from PDF
+  const extractTextFromPDF = async (arrayBuffer) => {
+    const pdf = await getDocument(arrayBuffer).promise;
+    const numPages = pdf.numPages;
+    let pdfText = '';
+
+    for (let i = 1; i <= numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      pdfText += pageText + '\n';
+    }
+
+    return pdfText;
+  };
+
+  // Function to extract text from .docx
+  const extractTextFromDocx = async (arrayBuffer) => {
+    try {
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      return result.value;
+    } catch (error) {
+      console.error('Error extracting text from .docx:', error);
+      throw new Error('Failed to extract text from Word document');
+    }
+  };
+
   const handleFileUpload = async (event) => {
     event.preventDefault();
     if (!selectedFile) {
@@ -94,8 +124,13 @@ const ContractReview = () => {
       return;
     }
 
-    if (selectedFile.type !== 'application/pdf') {
-      alert('Please select a PDF file.');
+    // Check if file is PDF or .docx
+    const isPDF = selectedFile.type === 'application/pdf';
+    const isDocx = selectedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+                   selectedFile.name.toLowerCase().endsWith('.docx');
+
+    if (!isPDF && !isDocx) {
+      alert('Please select a PDF or Word (.docx) file.');
       return;
     }
 
@@ -105,18 +140,16 @@ const ContractReview = () => {
       reader.onload = async (e) => {
         try {
           const arrayBuffer = e.target.result;
-          const pdf = await getDocument(arrayBuffer).promise;
-          const numPages = pdf.numPages;
-          let pdfText = '';
+          let documentText = '';
 
-          for (let i = 1; i <= numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map(item => item.str).join(' ');
-            pdfText += pageText + '\n';
+          // Extract text based on file type
+          if (isPDF) {
+            documentText = await extractTextFromPDF(arrayBuffer);
+          } else if (isDocx) {
+            documentText = await extractTextFromDocx(arrayBuffer);
           }
 
-          console.log('Extracted PDF Text:', pdfText);
+          console.log('Extracted Document Text:', documentText);
 
           //const flowiseUrl = 'https://workflows.ximplify.id/api/v1/prediction/0804fd86-1861-460c-afb1-c5761b646d62';
           // const flowiseUrl = 'https://workflows.ximplify.id/api/v1/prediction/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
@@ -138,8 +171,8 @@ const ContractReview = () => {
                 {
                   type: "file:full",
                   name: selectedFile.name,
-                  data: pdfText,  // ⚠️ pastikan sudah truncated jika panjang
-                  mime: "application/pdf"
+                  data: documentText,  // ⚠️ pastikan sudah truncated jika panjang
+                  mime: isPDF ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 }
               ]
             })
@@ -184,8 +217,8 @@ const ContractReview = () => {
             setReviewHistory([errorReview, ...reviewHistory]);
           }
         } catch (error) {
-          console.error('Error processing PDF or sending to agent:', error);
-          alert('Error processing PDF or sending to agent.');
+          console.error('Error processing document or sending to agent:', error);
+          alert('Error processing document or sending to agent.');
           
           // Set error message for AI Review card
           setAiReviewContent('Error: Could not process the contract review.');
@@ -699,8 +732,12 @@ const ContractReview = () => {
         return;
       }
 
-      if (selectedFile.type !== 'application/pdf') {
-        alert('Please select a PDF file.');
+      // Allow both PDF and DOCX
+      const isPDF = selectedFile.type === 'application/pdf';
+      const isDocx = selectedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+                     selectedFile.name.toLowerCase().endsWith('.docx');
+      if (!isPDF && !isDocx) {
+        alert('Please select a PDF or Word (.docx) file.');
         return;
       }
 
@@ -712,20 +749,26 @@ const ContractReview = () => {
       reader.onload = async (e) => {
         try {
           const arrayBuffer = e.target.result;
-          const pdf = await getDocument(arrayBuffer).promise;
-          const numPages = pdf.numPages;
-          let pdfText = '';
-
-          for (let i = 1; i <= numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map(item => item.str).join(' ');
-            pdfText += pageText + '\n';
+          let documentText = '';
+          if (isPDF) {
+            // Extract text from PDF
+            const pdf = await getDocument(arrayBuffer).promise;
+            const numPages = pdf.numPages;
+            for (let i = 1; i <= numPages; i++) {
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              const pageText = textContent.items.map(item => item.str).join(' ');
+              documentText += pageText + '\n';
+            }
+          } else if (isDocx) {
+            // Extract text from DOCX
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            documentText = result.value;
           }
 
-          console.log('Extracted PDF Text:', pdfText);
+          console.log('Extracted Document Text:', documentText);
 
-          // Save the original PDF text to the database with contract_review_id
+          // Save the original document text to the database with contract_review_id
           const { data, error } = await supabase
             .from('master_contract')
             .insert([
@@ -733,7 +776,7 @@ const ContractReview = () => {
                 user_email: user?.email || 'unknown@example.com',
                 user_role: user?.role || 'user',
                 session_token: user?.sessionToken || 'no-token',
-                original_pdf_text: pdfText,
+                original_pdf_text: documentText,
                 contract_name: selectedFile.name,
                 contract_review_id: contract_review_id,
                 status: 'pending'
@@ -748,12 +791,28 @@ const ContractReview = () => {
 
           console.log('Contract saved to database:', data);
 
+          // Fetch the contract back from the database and log the result
+          try {
+            const { data: fetchedContract, error: fetchError } = await supabase
+              .from('master_contract')
+              .select('*')
+              .eq('user_email', user?.email || 'unknown@example.com')
+              .eq('contract_review_id', contract_review_id);
+            if (fetchError) {
+              console.error('Error fetching contract after save:', fetchError);
+            } else {
+              console.log('Fetched contract after save:', fetchedContract);
+            }
+          } catch (fetchEx) {
+            console.error('Exception fetching contract after save:', fetchEx);
+          }
+
           // Extract data from table B
           const tableBData = extractTableBData();
           console.log('Extracted table B data:', tableBData);
 
           // Save table B data to contract_updates table with contract_review_id
-          await saveContractUpdatesToDatabase(tableBData, pdfText, contract_review_id);
+          await saveContractUpdatesToDatabase(tableBData, documentText, contract_review_id);
 
           // Success message after database operations are complete
           alert(`Contract review data has been successfully saved to database with ID: ${contract_review_id}`);
@@ -1061,9 +1120,14 @@ const ContractReview = () => {
               <Form onSubmit={handleFileUpload}>
                 <Form.Group controlId="formFile" className="mb-3">
                   <Form.Label>Upload Contract for Review</Form.Label>
-                  <Form.Control type="file" onChange={handleFileChange} disabled={isProcessing} />
+                  <Form.Control 
+                    type="file" 
+                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleFileChange} 
+                    disabled={isProcessing} 
+                  />
                   <Form.Text className="text-muted">
-                    Upload a PDF contract file for AI-powered review and analysis.
+                    Upload a PDF or Word (.docx) contract file for AI-powered review and analysis.
                   </Form.Text>
                 </Form.Group>
                 <Button variant="primary" type="submit" disabled={isProcessing}>
@@ -1089,6 +1153,7 @@ const ContractReview = () => {
         </Col>
       </Row>
 
+      {/* Review Data card hidden as requested
       <Row>
         <Col xl={12} xxl={12}>
           <Card>
@@ -1144,6 +1209,7 @@ const ContractReview = () => {
           </Card>
         </Col>
       </Row>
+      */}
 
       <Row>
         <Col xl={12} xxl={12}>
