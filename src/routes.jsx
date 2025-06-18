@@ -69,14 +69,11 @@ const routes = [
       },
       {
         exact: 'true',
-<<<<<<< HEAD
         path: '/contract-review-update',
         element: lazy(() => import('./views/contract-review-update'))
       },
       {
         exact: 'true',
-=======
->>>>>>> 1578c6cde93a3a167e7b3e1b979428e0510e73f0
         path: '/logout',
         element: lazy(() => import('./views/logout'))
       },
