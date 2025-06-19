@@ -52,7 +52,7 @@ const ContractReview = () => {
       import Chatbot from "https://cdn.jsdelivr.net/npm/flowise-embed/dist/web.js"
       Chatbot.init({
         chatflowid: "29de46a3-2f2f-4bf5-ad8d-9c6b7c24f355",
-        apiHost: "https://workflow.simplifygenai.id/",
+        apiHost: "https://workflow.simplifygenai.id",
         theme: {
           chatWindow: {
             footer: {
@@ -802,9 +802,6 @@ const ContractReview = () => {
           // Save table B data to contract_updates table with contract_review_id
           await saveContractUpdatesToDatabase(tableBData, documentText, contract_review_id);
 
-          // Success message after database operations are complete
-          alert(`Contract review data has been successfully saved to database with ID: ${contract_review_id}`);
-          
           // Navigate to the contract-review-update route with user email and contract_review_id
           navigate('/contract-review-update', {
             state: {
@@ -1088,7 +1085,6 @@ const ContractReview = () => {
       }
 
       console.log('Contract updates saved to database successfully:', data);
-      alert(`Successfully saved ${tableBData.length} contract updates to database!`);
     } catch (error) {
       console.error('Error in saveContractUpdatesToDatabase:', error);
       console.error('Error stack:', error.stack);
@@ -1240,7 +1236,7 @@ const ContractReview = () => {
                 Saving Contract Data...
               </>
             ) : (
-              'Save Contract Review Data'
+              'Generate New Contract File'
             )}
           </Button>
         </Col>
