@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@originjs/vite-plugin-commonjs": "^1.0.3",
+    "@pinecone-database/pinecone": "^6.1.1",
     "@react-google-maps/api": "^2.19.3",
     "@supabase/supabase-js": "^2.50.0",
     "@tanem/react-nprogress": "^5.0.51",

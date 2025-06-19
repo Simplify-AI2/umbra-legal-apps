@@ -2169,6 +2169,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@pinecone-database/pinecone@npm:^6.1.1":
+  version: 6.1.1
+  resolution: "@pinecone-database/pinecone@npm:6.1.1"
+  checksum: 10c0/1d33d83e0d8e415194c23fe101c0fb90b329e1c7b26e954896086e35278a9f704c92ee1e52a3da43de7b12140a0dbb9a15c1100d6a467e337aabf044864b8008
+  languageName: node
+  linkType: hard
+
 "@pkgjs/parseargs@npm:^0.11.0":
   version: 0.11.0
   resolution: "@pkgjs/parseargs@npm:0.11.0"
@@ -4024,6 +4031,7 @@ __metadata:
     "@babel/plugin-proposal-private-property-in-object": "npm:^7.21.11"
     "@babel/preset-react": "npm:^7.24.1"
     "@originjs/vite-plugin-commonjs": "npm:^1.0.3"
+    "@pinecone-database/pinecone": "npm:^6.1.1"
     "@react-google-maps/api": "npm:^2.19.3"
     "@supabase/supabase-js": "npm:^2.50.0"
     "@tanem/react-nprogress": "npm:^5.0.51"
