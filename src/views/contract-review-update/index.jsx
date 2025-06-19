@@ -349,6 +349,11 @@ const ContractReviewUpdate = () => {
   };
 
   const exportToWord = async () => {
+    if (!revisedContract) {
+      navigate('/contract-review');
+      return;
+    }
+
     try {
       // Convert markdown to Word document structure
       const paragraphs = [];
