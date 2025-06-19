@@ -154,7 +154,7 @@ const ContractReview = () => {
             },
             body: JSON.stringify({
               question: "Please summarize this contract.",
-              chatId: "session-client-side-ui", // unik per pengguna/sesi
+              chatId: generateContractReviewId(), // unik per pengguna/sesi
               uploads: [
                 {
                   type: "file:full",
