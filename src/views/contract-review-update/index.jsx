@@ -5,7 +5,6 @@ import { supabase } from '../../config/supabase';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { Pinecone } from '@pinecone-database/pinecone';
 
 // Simplify API base
 const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/c86edd85-f451-4bd6-8d7f-05a73c324c23';
@@ -322,22 +321,6 @@ const ContractReviewUpdate = () => {
         console.log('Revised contract saved to database successfully');
       }
 
-      // Pinecone upsert for new revised contract
-      try {
-        const pc = new Pinecone({ apiKey: import.meta.env.VITE_PINECONE_API_KEY });
-        const namespace = pc.namespace('pinecone-namespace-1'); // Use your actual namespace if different
-        await namespace.upsertRecords([
-          {
-            _id: `rec-${contractReviewIdToUse}`,
-            chunk_text: output,
-            category: 'contract_review',
-          }
-        ]);
-        console.log('Upserted revised contract to Pinecone successfully.');
-      } catch (pineconeError) {
-        console.error('Error upserting revised contract to Pinecone:', pineconeError);
-      }
-
       // Automatically export to WORD after generation is complete
       await exportToWord();
 
@@ -350,7 +333,7 @@ const ContractReviewUpdate = () => {
 
   const exportToWord = async () => {
     if (!revisedContract) {
-      navigate('/contract-review');
+      alert('No revised contract available to export. Please generate a revised contract first.');
       return;
     }
 
