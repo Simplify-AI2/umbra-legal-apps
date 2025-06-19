@@ -349,11 +349,6 @@ const ContractReviewUpdate = () => {
   };
 
   const exportToWord = async () => {
-    if (!revisedContract) {
-      alert('No revised contract available to export. Please generate a revised contract first.');
-      return;
-    }
-
     try {
       // Convert markdown to Word document structure
       const paragraphs = [];
