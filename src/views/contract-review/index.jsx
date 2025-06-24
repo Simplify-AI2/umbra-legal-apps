@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Row, Col, Card, Form, Button, Spinner, Table, Badge } from 'react-bootstrap';
+import { Row, Col, Card, Form, Button, Spinner, Table, Badge, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { v4 as uuidv4 } from 'uuid';
 
 // Import PDF.js
 import * as pdfjsLib from 'pdfjs-dist';
@@ -14,6 +15,9 @@ import mammoth from 'mammoth';
 // Set worker source
 GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
+// Add API URL for contract revision agent
+const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/20f7238b-7947-492b-9aea-8931c80fbeb6';
+
 const ContractReview = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -24,16 +28,491 @@ const ContractReview = () => {
   const [isSaving, setIsSaving] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationModalValue, setVerificationModalValue] = useState('');
+  const [verificationModalCell, setVerificationModalCell] = useState(null);
+  const [revisedContract, setRevisedContract] = useState('');
+  const [isGeneratingRevised, setIsGeneratingRevised] = useState(false);
+  const [editableRevisedContract, setEditableRevisedContract] = useState('');
 
-  // Function to generate unique 50-character random string
-  const generateContractReviewId = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < 50; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+  // Function to generate unique contract_review_id using uuid v4
+  const generateContractReviewId = () => uuidv4();
+
+  // Test function to manually trigger checkbox creation (for debugging)
+  const testCheckboxCreation = () => {
+    console.log('=== TESTING CHECKBOX CREATION ===');
+    if (!aiReviewRef.current) {
+      console.log('aiReviewRef.current is null');
+      return;
     }
-    return result;
+
+    const tables = aiReviewRef.current.querySelectorAll('table');
+    console.log(`Found ${tables.length} tables`);
+    
+    tables.forEach((table, index) => {
+      console.log(`Table ${index + 1}:`, table.textContent.substring(0, 200));
+      const checkboxes = table.querySelectorAll('input[type="checkbox"]');
+      console.log(`Table ${index + 1} has ${checkboxes.length} checkboxes`);
+    });
+    
+    // Try to force add checkboxes
+    const success = forceAddCheckboxes();
+    console.log('Checkbox creation result:', success);
   };
+      
+      // Function to force add checkboxes to ANY table that might be amendments
+      const forceAddCheckboxes = () => {
+        const container = aiReviewRef.current;
+        if (!container) {
+          console.log('Container not found');
+          return false;
+        }
+
+        console.log('Searching for tables in container...');
+        const allTables = container.querySelectorAll('table');
+        console.log(`Found ${allTables.length} tables total`);
+
+        let checkboxesAdded = false;
+
+        allTables.forEach((table, tableIndex) => {
+          console.log(`Checking table ${tableIndex + 1}:`, table.textContent.substring(0, 100));
+          
+          // Check if this table is specifically table B) "Recommended Legal Amendments and Clause Revisions"
+          const tableText = table.textContent.toLowerCase();
+          
+          // More flexible detection for table B) - look for various ways the AI might format it
+          const isTableB = (
+            // Look for table B) with various title formats
+            (tableText.includes('b)') || tableText.includes('table b') || tableText.includes('table b)')) &&
+            // And look for amendments/revisions content
+            (tableText.includes('amendment') || tableText.includes('revision') || tableText.includes('clause'))
+          ) ||
+          // Alternative: look for the full title in various formats
+          tableText.includes('recommended legal amendments and clause revisions') ||
+          tableText.includes('recommended amendments and clause revisions') ||
+          tableText.includes('legal amendments and revisions');
+          
+          console.log(`Table ${tableIndex + 1} text preview:`, tableText.substring(0, 200));
+          console.log(`Table ${tableIndex + 1} contains 'b)':`, tableText.includes('b)'));
+          console.log(`Table ${tableIndex + 1} contains amendment/revision:`, tableText.includes('amendment') || tableText.includes('revision'));
+          
+          if (isTableB) {
+            console.log(`Table ${tableIndex + 1} is confirmed as table B) - adding checkboxes...`);
+            
+            // Force add header if it doesn't exist
+            let headerRow = table.querySelector('thead tr');
+            if (!headerRow) {
+              console.log('No thead found, creating one...');
+              const thead = document.createElement('thead');
+              headerRow = document.createElement('tr');
+              thead.appendChild(headerRow);
+              table.insertBefore(thead, table.firstChild);
+            }
+            
+            // Add Select header
+            const existingSelectHeader = headerRow.querySelector('th:last-child');
+            if (!existingSelectHeader || !existingSelectHeader.textContent.includes('Select')) {
+              const selectHeader = document.createElement('th');
+              selectHeader.textContent = 'Select';
+              selectHeader.style.textAlign = 'center';
+              selectHeader.style.width = '80px';
+              selectHeader.style.backgroundColor = '#f8f9fa';
+              selectHeader.style.border = '1px solid #dee2e6';
+              selectHeader.style.padding = '8px';
+              headerRow.appendChild(selectHeader);
+              console.log('Added Select header to table B)');
+            }
+            
+            // Add checkboxes to all rows
+            const allRows = table.querySelectorAll('tr');
+            console.log(`Found ${allRows.length} total rows in table B)`);
+            
+            allRows.forEach((row, rowIndex) => {
+              // Skip header row
+              if (row.parentElement.tagName === 'THEAD') {
+                return;
+              }
+              
+              // Check if row already has checkbox
+              const existingCheckbox = row.querySelector('input[type="checkbox"]');
+              if (!existingCheckbox) {
+                // Create new cell with checkbox
+                const checkboxCell = document.createElement('td');
+                checkboxCell.style.textAlign = 'center';
+                checkboxCell.style.verticalAlign = 'middle';
+                checkboxCell.style.border = '1px solid #dee2e6';
+                checkboxCell.style.padding = '8px';
+                checkboxCell.style.backgroundColor = '#ffffff';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.style.width = '18px';
+                checkbox.style.height = '18px';
+                checkbox.style.cursor = 'pointer';
+                checkbox.id = `checkbox-tableB-row-${rowIndex}`;
+                checkbox.onclick = (e) => {
+                  console.log(`Checkbox clicked: ${checkbox.id}`);
+              // Remove stopPropagation to allow the change event to fire properly
+              // e.stopPropagation();
+                };
+                checkbox.onchange = (e) => {
+                  const isChecked = e.target.checked;
+                  console.log(`Checkbox ${checkbox.id} changed to: ${isChecked}`);
+                  
+                  // Find the "Input Verification of Amendments" column in this row
+                  const cells = row.querySelectorAll('td');
+                  let verificationCell = null;
+                  
+                  // First try to find by header text
+                  const table = row.closest('table');
+                  const headerRow = table.querySelector('thead tr');
+                  if (headerRow) {
+                    const headerCells = headerRow.querySelectorAll('th');
+                    let verificationColumnIndex = -1;
+                    
+                    headerCells.forEach((headerCell, index) => {
+                      const headerText = headerCell.textContent.toLowerCase();
+                  console.log(`Checking header ${index}: "${headerCell.textContent}"`);
+                      if (headerText.includes('input verification') || 
+                          headerText.includes('verification of amendments') ||
+                          headerText.includes('verification')) {
+                        verificationColumnIndex = index;
+                        console.log(`Found verification column at index ${index}: "${headerCell.textContent}"`);
+                      }
+                    });
+                    
+                    if (verificationColumnIndex >= 0 && cells[verificationColumnIndex]) {
+                      verificationCell = cells[verificationColumnIndex];
+                  console.log(`Using verification cell at index ${verificationColumnIndex}`);
+                    }
+                  }
+                  
+                  // Fallback: look for cell content
+                  if (!verificationCell) {
+                console.log('Trying fallback method to find verification cell...');
+                cells.forEach((cell, cellIndex) => {
+                  const cellText = cell.textContent.toLowerCase();
+                  console.log(`Cell ${cellIndex} content: "${cell.textContent.substring(0, 50)}..."`);
+                  if (cellText.includes('input verification') || 
+                      cellText.includes('verification')) {
+                        verificationCell = cell;
+                    console.log(`Found verification cell by content at index ${cellIndex}`);
+                      }
+                    });
+                  }
+              
+              // Additional fallback: try to find by position (usually the 4th column)
+              if (!verificationCell && cells.length >= 4) {
+                console.log('Trying position-based fallback (4th column)...');
+                verificationCell = cells[3]; // 4th column (0-indexed)
+                console.log(`Using 4th column as verification cell: "${verificationCell.textContent.substring(0, 50)}..."`);
+              }
+                  
+                  if (verificationCell) {
+                console.log(`Verification cell found: "${verificationCell.textContent.substring(0, 100)}..."`);
+                    if (isChecked) {
+                      // Find the "Revised Clause (Formal Legal Language)" column to get default text
+                      let defaultText = '';
+                      const headerRow = table.querySelector('thead tr');
+                      if (headerRow) {
+                        const headerCells = headerRow.querySelectorAll('th');
+                        let revisedClauseColumnIndex = -1;
+                        
+                        headerCells.forEach((headerCell, index) => {
+                          const headerText = headerCell.textContent.toLowerCase();
+                          if (headerText.includes('revised clause') || 
+                              headerText.includes('formal legal language') ||
+                              headerText.includes('recommended amendment')) {
+                            revisedClauseColumnIndex = index;
+                            console.log(`Found revised clause column at index ${index}: "${headerCell.textContent}"`);
+                          }
+                        });
+                        
+                        if (revisedClauseColumnIndex >= 0 && cells[revisedClauseColumnIndex]) {
+                          defaultText = cells[revisedClauseColumnIndex].textContent.trim();
+                          console.log(`Default text from revised clause column: "${defaultText.substring(0, 100)}..."`);
+                        }
+                      }
+                      
+                      // Create textarea when checkbox is checked
+                      const textarea = document.createElement('textarea');
+                      textarea.placeholder = 'Enter verification notes...';
+                      textarea.value = defaultText; // Set default text from revised clause column
+                      textarea.style.width = '100%';
+                      textarea.style.minHeight = '60px';
+                      textarea.style.height = 'auto'; // Start with auto height
+                      textarea.style.padding = '4px';
+                      textarea.style.border = '1px solid #ccc';
+                      textarea.style.borderRadius = '4px';
+                      textarea.style.fontSize = '12px';
+                      textarea.style.resize = 'vertical'; // Allow vertical resizing
+                      textarea.style.overflowY = 'auto'; // Show scrollbar if needed
+                      textarea.id = `textarea-${checkbox.id}`;
+                      
+                      // Auto-resize textarea to fit content
+                      const autoResize = () => {
+                        textarea.style.height = 'auto';
+                        const scrollHeight = textarea.scrollHeight;
+                        const maxHeight = Math.max(200, scrollHeight); // Minimum 200px, or content height
+                        textarea.style.height = `${maxHeight}px`;
+                      };
+                      
+                      // Set initial height after content is loaded
+                      setTimeout(autoResize, 10);
+                      
+                      // Auto-resize on input
+                      textarea.addEventListener('input', autoResize);
+                      
+                      // Clear existing content and add textarea
+                      verificationCell.innerHTML = '';
+                      verificationCell.appendChild(textarea);
+                      textarea.focus();
+                      
+                      console.log(`Added textarea to verification cell for row ${rowIndex + 1} with default text`);
+                    } else {
+                      // Remove textarea when checkbox is unchecked
+                      const existingTextarea = verificationCell.querySelector('textarea');
+                      if (existingTextarea) {
+                        verificationCell.innerHTML = '';
+                        console.log(`Removed textarea from verification cell for row ${rowIndex + 1}`);
+                      }
+                    }
+                  } else {
+                    console.log(`Could not find verification cell in row ${rowIndex + 1}`);
+                console.log('Available cells:', Array.from(cells).map((cell, idx) => `${idx}: "${cell.textContent.substring(0, 50)}..."`));
+                  }
+                };
+                
+                checkboxCell.appendChild(checkbox);
+                row.appendChild(checkboxCell);
+                checkboxesAdded = true;
+                console.log(`Added checkbox to row ${rowIndex + 1} in table B)`);
+              }
+            });
+          } else {
+            console.log(`Table ${tableIndex + 1} is NOT table B) - skipping checkbox addition`);
+            
+            // Fallback: if we haven't found table B) yet and this table looks like it could be it
+            if (!checkboxesAdded && tableIndex > 0) { // Skip first table (likely table A)
+              const fallbackCheck = (tableText.includes('amendment') || 
+                                   tableText.includes('revision') || 
+                                   tableText.includes('clause') ||
+                                   tableText.includes('recommended')) &&
+                                   // Exclude table C) "Redundancy Check"
+                                   !tableText.includes('redundancy') &&
+                                   !tableText.includes('c)') &&
+                                   !tableText.includes('table c');
+              
+              if (fallbackCheck) {
+                console.log(`Fallback: Table ${tableIndex + 1} might be table B) - adding checkboxes anyway...`);
+                
+                // Force add header if it doesn't exist
+                let headerRow = table.querySelector('thead tr');
+                if (!headerRow) {
+                  console.log('No thead found, creating one...');
+                  const thead = document.createElement('thead');
+                  headerRow = document.createElement('tr');
+                  thead.appendChild(headerRow);
+                  table.insertBefore(thead, table.firstChild);
+                }
+                
+                // Add Select header
+                const existingSelectHeader = headerRow.querySelector('th:last-child');
+                if (!existingSelectHeader || !existingSelectHeader.textContent.includes('Select')) {
+                  const selectHeader = document.createElement('th');
+                  selectHeader.textContent = 'Select';
+                  selectHeader.style.textAlign = 'center';
+                  selectHeader.style.width = '80px';
+                  selectHeader.style.backgroundColor = '#f8f9fa';
+                  selectHeader.style.border = '1px solid #dee2e6';
+                  selectHeader.style.padding = '8px';
+                  headerRow.appendChild(selectHeader);
+                  console.log('Added Select header to fallback table');
+                }
+                
+                // Add checkboxes to all rows
+                const allRows = table.querySelectorAll('tr');
+                console.log(`Found ${allRows.length} total rows in fallback table`);
+                
+                allRows.forEach((row, rowIndex) => {
+                  // Skip header row
+                  if (row.parentElement.tagName === 'THEAD') {
+                    return;
+                  }
+                  
+                  // Check if row already has checkbox
+                  const existingCheckbox = row.querySelector('input[type="checkbox"]');
+                  if (!existingCheckbox) {
+                    // Create new cell with checkbox
+                    const checkboxCell = document.createElement('td');
+                    checkboxCell.style.textAlign = 'center';
+                    checkboxCell.style.verticalAlign = 'middle';
+                    checkboxCell.style.border = '1px solid #dee2e6';
+                    checkboxCell.style.padding = '8px';
+                    checkboxCell.style.backgroundColor = '#ffffff';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.style.width = '18px';
+                    checkbox.style.height = '18px';
+                    checkbox.style.cursor = 'pointer';
+                    checkbox.id = `checkbox-fallback-row-${rowIndex}`;
+                    checkbox.onclick = (e) => {
+                      console.log(`Checkbox clicked: ${checkbox.id}`);
+                  // Remove stopPropagation to allow the change event to fire properly
+                  // e.stopPropagation();
+                    };
+                    checkbox.onchange = (e) => {
+                      const isChecked = e.target.checked;
+                      console.log(`Fallback checkbox ${checkbox.id} changed to: ${isChecked}`);
+                      
+                      // Find the "Input Verification of Amendments" column in this row
+                      const cells = row.querySelectorAll('td');
+                      let verificationCell = null;
+                      
+                      // First try to find by header text
+                      const table = row.closest('table');
+                      const headerRow = table.querySelector('thead tr');
+                      if (headerRow) {
+                        const headerCells = headerRow.querySelectorAll('th');
+                        let verificationColumnIndex = -1;
+                        
+                        headerCells.forEach((headerCell, index) => {
+                          const headerText = headerCell.textContent.toLowerCase();
+                      console.log(`Checking header ${index}: "${headerCell.textContent}"`);
+                          if (headerText.includes('input verification') || 
+                              headerText.includes('verification of amendments') ||
+                              headerText.includes('verification')) {
+                            verificationColumnIndex = index;
+                            console.log(`Found verification column at index ${index}: "${headerCell.textContent}"`);
+                          }
+                        });
+                        
+                        if (verificationColumnIndex >= 0 && cells[verificationColumnIndex]) {
+                          verificationCell = cells[verificationColumnIndex];
+                      console.log(`Using verification cell at index ${verificationColumnIndex}`);
+                        }
+                      }
+                      
+                      // Fallback: look for cell content
+                      if (!verificationCell) {
+                    console.log('Trying fallback method to find verification cell...');
+                    cells.forEach((cell, cellIndex) => {
+                      const cellText = cell.textContent.toLowerCase();
+                      console.log(`Cell ${cellIndex} content: "${cell.textContent.substring(0, 50)}..."`);
+                      if (cellText.includes('input verification') || 
+                          cellText.includes('verification')) {
+                            verificationCell = cell;
+                        console.log(`Found verification cell by content at index ${cellIndex}`);
+                          }
+                        });
+                      }
+                  
+                  // Additional fallback: try to find by position (usually the 4th column)
+                  if (!verificationCell && cells.length >= 4) {
+                    console.log('Trying position-based fallback (4th column)...');
+                    verificationCell = cells[3]; // 4th column (0-indexed)
+                    console.log(`Using 4th column as verification cell: "${verificationCell.textContent.substring(0, 50)}..."`);
+                  }
+                      
+                      if (verificationCell) {
+                    console.log(`Verification cell found: "${verificationCell.textContent.substring(0, 100)}..."`);
+                        if (isChecked) {
+                          // Find the "Revised Clause (Formal Legal Language)" column to get default text
+                          let defaultText = '';
+                          const headerRow = table.querySelector('thead tr');
+                          if (headerRow) {
+                            const headerCells = headerRow.querySelectorAll('th');
+                            let revisedClauseColumnIndex = -1;
+                            
+                            headerCells.forEach((headerCell, index) => {
+                              const headerText = headerCell.textContent.toLowerCase();
+                              if (headerText.includes('revised clause') || 
+                                  headerText.includes('formal legal language') ||
+                                  headerText.includes('recommended amendment')) {
+                                revisedClauseColumnIndex = index;
+                                console.log(`Found revised clause column at index ${index}: "${headerCell.textContent}"`);
+                              }
+                            });
+                            
+                            if (revisedClauseColumnIndex >= 0 && cells[revisedClauseColumnIndex]) {
+                              defaultText = cells[revisedClauseColumnIndex].textContent.trim();
+                              console.log(`Default text from revised clause column: "${defaultText.substring(0, 100)}..."`);
+                            }
+                          }
+                          
+                          // Create textarea when checkbox is checked
+                          const textarea = document.createElement('textarea');
+                          textarea.placeholder = 'Enter verification notes...';
+                          textarea.value = defaultText; // Set default text from revised clause column
+                          textarea.style.width = '100%';
+                          textarea.style.minHeight = '60px';
+                          textarea.style.height = 'auto'; // Start with auto height
+                          textarea.style.padding = '4px';
+                          textarea.style.border = '1px solid #ccc';
+                          textarea.style.borderRadius = '4px';
+                          textarea.style.fontSize = '12px';
+                          textarea.style.resize = 'vertical'; // Allow vertical resizing
+                          textarea.style.overflowY = 'auto'; // Show scrollbar if needed
+                          textarea.id = `textarea-${checkbox.id}`;
+                          
+                          // Auto-resize textarea to fit content
+                          const autoResize = () => {
+                            textarea.style.height = 'auto';
+                            const scrollHeight = textarea.scrollHeight;
+                            const maxHeight = Math.max(200, scrollHeight); // Minimum 200px, or content height
+                            textarea.style.height = `${maxHeight}px`;
+                          };
+                          
+                          // Set initial height after content is loaded
+                          setTimeout(autoResize, 10);
+                          
+                          // Auto-resize on input
+                          textarea.addEventListener('input', autoResize);
+                          
+                          // Clear existing content and add textarea
+                          verificationCell.innerHTML = '';
+                          verificationCell.appendChild(textarea);
+                          textarea.focus();
+                          
+                          console.log(`Added textarea to verification cell for row ${rowIndex + 1} with default text`);
+                        } else {
+                          // Remove textarea when checkbox is unchecked
+                          const existingTextarea = verificationCell.querySelector('textarea');
+                          if (existingTextarea) {
+                            verificationCell.innerHTML = '';
+                            console.log(`Removed textarea from verification cell for row ${rowIndex + 1}`);
+                          }
+                        }
+                      } else {
+                        console.log(`Could not find verification cell in row ${rowIndex + 1}`);
+                    console.log('Available cells:', Array.from(cells).map((cell, idx) => `${idx}: "${cell.textContent.substring(0, 50)}..."`));
+                      }
+                    };
+                    
+                    checkboxCell.appendChild(checkbox);
+                    row.appendChild(checkboxCell);
+                    checkboxesAdded = true;
+                    console.log(`Added checkbox to row ${rowIndex + 1} in fallback table`);
+                  }
+                });
+              }
+            }
+          }
+        });
+        
+        return checkboxesAdded;
+      };
+
+  // Make the test function available globally for debugging
+  useEffect(() => {
+    window.testCheckboxCreation = testCheckboxCreation;
+    window.forceAddCheckboxes = forceAddCheckboxes;
+    return () => {
+      delete window.testCheckboxCreation;
+      delete window.forceAddCheckboxes;
+    };
+  }, []);
 
   useEffect(() => {
     // Add custom CSS to hide "Powered by Flowise" text
@@ -139,13 +618,11 @@ const ContractReview = () => {
 
           console.log('Extracted Document Text:', documentText);
 
-          //const flowiseUrl = 'https://workflows.ximplify.id/api/v1/prediction/0804fd86-1861-460c-afb1-c5761b646d62';
-          // const flowiseUrl = 'https://workflows.ximplify.id/api/v1/prediction/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
-          const flowiseUrl = 'https://workflow.simplifygenai.id/api/v1/prediction/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
-          //const flowiseUrl = 'https://genai.ximplify.id/api/v1/prediction/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
+          // contract review openrouter
+          //const flowiseUrl = 'https://workflow.simplifygenai.id/api/v1/prediction/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
 
-          //const flowiseUrl = 'https://workflows.ximplify.id/v2/agentcanvas/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
-          //const flowiseUrl = 'https://genai.ximplify.id/v2/agentcanvas/e1f20939-9e16-439c-a9dc-7aa3fbbe837a';
+          // contract review openrouter - TRIAL
+          const flowiseUrl = 'https://workflow.simplifygenai.id/api/v1/prediction/44828cd5-c241-4fac-bc36-84531209cbd7';
 
           const response = await fetch(flowiseUrl, {
             method: 'POST',
@@ -260,420 +737,6 @@ const ContractReview = () => {
   useEffect(() => {
     if (aiReviewContent && aiReviewRef.current) {
       console.log('AI Review content updated, starting checkbox addition process...');
-      
-      // Function to force add checkboxes to ANY table that might be amendments
-      const forceAddCheckboxes = () => {
-        const container = aiReviewRef.current;
-        if (!container) {
-          console.log('Container not found');
-          return false;
-        }
-
-        console.log('Searching for tables in container...');
-        const allTables = container.querySelectorAll('table');
-        console.log(`Found ${allTables.length} tables total`);
-
-        let checkboxesAdded = false;
-
-        allTables.forEach((table, tableIndex) => {
-          console.log(`Checking table ${tableIndex + 1}:`, table.textContent.substring(0, 100));
-          
-          // Check if this table is specifically table B) "Recommended Legal Amendments and Clause Revisions"
-          const tableText = table.textContent.toLowerCase();
-          
-          // More flexible detection for table B) - look for various ways the AI might format it
-          const isTableB = (
-            // Look for table B) with various title formats
-            (tableText.includes('b)') || tableText.includes('table b') || tableText.includes('table b)')) &&
-            // And look for amendments/revisions content
-            (tableText.includes('amendment') || tableText.includes('revision') || tableText.includes('clause'))
-          ) ||
-          // Alternative: look for the full title in various formats
-          tableText.includes('recommended legal amendments and clause revisions') ||
-          tableText.includes('recommended amendments and clause revisions') ||
-          tableText.includes('legal amendments and revisions');
-          
-          console.log(`Table ${tableIndex + 1} text preview:`, tableText.substring(0, 200));
-          console.log(`Table ${tableIndex + 1} contains 'b)':`, tableText.includes('b)'));
-          console.log(`Table ${tableIndex + 1} contains amendment/revision:`, tableText.includes('amendment') || tableText.includes('revision'));
-          
-          if (isTableB) {
-            console.log(`Table ${tableIndex + 1} is confirmed as table B) - adding checkboxes...`);
-            
-            // Force add header if it doesn't exist
-            let headerRow = table.querySelector('thead tr');
-            if (!headerRow) {
-              console.log('No thead found, creating one...');
-              const thead = document.createElement('thead');
-              headerRow = document.createElement('tr');
-              thead.appendChild(headerRow);
-              table.insertBefore(thead, table.firstChild);
-            }
-            
-            // Add Select header
-            const existingSelectHeader = headerRow.querySelector('th:last-child');
-            if (!existingSelectHeader || !existingSelectHeader.textContent.includes('Select')) {
-              const selectHeader = document.createElement('th');
-              selectHeader.textContent = 'Select';
-              selectHeader.style.textAlign = 'center';
-              selectHeader.style.width = '80px';
-              selectHeader.style.backgroundColor = '#f8f9fa';
-              selectHeader.style.border = '1px solid #dee2e6';
-              selectHeader.style.padding = '8px';
-              headerRow.appendChild(selectHeader);
-              console.log('Added Select header to table B)');
-            }
-            
-            // Add checkboxes to all rows
-            const allRows = table.querySelectorAll('tr');
-            console.log(`Found ${allRows.length} total rows in table B)`);
-            
-            allRows.forEach((row, rowIndex) => {
-              // Skip header row
-              if (row.parentElement.tagName === 'THEAD') {
-                return;
-              }
-              
-              // Check if row already has checkbox
-              const existingCheckbox = row.querySelector('input[type="checkbox"]');
-              if (!existingCheckbox) {
-                // Create new cell with checkbox
-                const checkboxCell = document.createElement('td');
-                checkboxCell.style.textAlign = 'center';
-                checkboxCell.style.verticalAlign = 'middle';
-                checkboxCell.style.border = '1px solid #dee2e6';
-                checkboxCell.style.padding = '8px';
-                checkboxCell.style.backgroundColor = '#ffffff';
-                
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.style.width = '18px';
-                checkbox.style.height = '18px';
-                checkbox.style.cursor = 'pointer';
-                checkbox.id = `checkbox-tableB-row-${rowIndex}`;
-                checkbox.onclick = (e) => {
-                  console.log(`Checkbox clicked: ${checkbox.id}`);
-                  e.stopPropagation();
-                };
-                checkbox.onchange = (e) => {
-                  const isChecked = e.target.checked;
-                  console.log(`Checkbox ${checkbox.id} changed to: ${isChecked}`);
-                  
-                  // Find the "Input Verification of Amendments" column in this row
-                  const cells = row.querySelectorAll('td');
-                  let verificationCell = null;
-                  
-                  // First try to find by header text
-                  const table = row.closest('table');
-                  const headerRow = table.querySelector('thead tr');
-                  if (headerRow) {
-                    const headerCells = headerRow.querySelectorAll('th');
-                    let verificationColumnIndex = -1;
-                    
-                    headerCells.forEach((headerCell, index) => {
-                      const headerText = headerCell.textContent.toLowerCase();
-                      if (headerText.includes('input verification') || 
-                          headerText.includes('verification of amendments') ||
-                          headerText.includes('verification')) {
-                        verificationColumnIndex = index;
-                        console.log(`Found verification column at index ${index}: "${headerCell.textContent}"`);
-                      }
-                    });
-                    
-                    if (verificationColumnIndex >= 0 && cells[verificationColumnIndex]) {
-                      verificationCell = cells[verificationColumnIndex];
-                    }
-                  }
-                  
-                  // Fallback: look for cell content
-                  if (!verificationCell) {
-                    cells.forEach(cell => {
-                      if (cell.textContent.toLowerCase().includes('input verification') || 
-                          cell.textContent.toLowerCase().includes('verification')) {
-                        verificationCell = cell;
-                      }
-                    });
-                  }
-                  
-                  if (verificationCell) {
-                    if (isChecked) {
-                      // Find the "Revised Clause (Formal Legal Language)" column to get default text
-                      let defaultText = '';
-                      const headerRow = table.querySelector('thead tr');
-                      if (headerRow) {
-                        const headerCells = headerRow.querySelectorAll('th');
-                        let revisedClauseColumnIndex = -1;
-                        
-                        headerCells.forEach((headerCell, index) => {
-                          const headerText = headerCell.textContent.toLowerCase();
-                          if (headerText.includes('revised clause') || 
-                              headerText.includes('formal legal language') ||
-                              headerText.includes('recommended amendment')) {
-                            revisedClauseColumnIndex = index;
-                            console.log(`Found revised clause column at index ${index}: "${headerCell.textContent}"`);
-                          }
-                        });
-                        
-                        if (revisedClauseColumnIndex >= 0 && cells[revisedClauseColumnIndex]) {
-                          defaultText = cells[revisedClauseColumnIndex].textContent.trim();
-                          console.log(`Default text from revised clause column: "${defaultText.substring(0, 100)}..."`);
-                        }
-                      }
-                      
-                      // Create textarea when checkbox is checked
-                      const textarea = document.createElement('textarea');
-                      textarea.placeholder = 'Enter verification notes...';
-                      textarea.value = defaultText; // Set default text from revised clause column
-                      textarea.style.width = '100%';
-                      textarea.style.minHeight = '60px';
-                      textarea.style.height = 'auto'; // Start with auto height
-                      textarea.style.padding = '4px';
-                      textarea.style.border = '1px solid #ccc';
-                      textarea.style.borderRadius = '4px';
-                      textarea.style.fontSize = '12px';
-                      textarea.style.resize = 'vertical'; // Allow vertical resizing
-                      textarea.style.overflowY = 'auto'; // Show scrollbar if needed
-                      textarea.id = `textarea-${checkbox.id}`;
-                      
-                      // Auto-resize textarea to fit content
-                      const autoResize = () => {
-                        textarea.style.height = 'auto';
-                        const scrollHeight = textarea.scrollHeight;
-                        const maxHeight = Math.max(200, scrollHeight); // Minimum 200px, or content height
-                        textarea.style.height = `${maxHeight}px`;
-                      };
-                      
-                      // Set initial height after content is loaded
-                      setTimeout(autoResize, 10);
-                      
-                      // Auto-resize on input
-                      textarea.addEventListener('input', autoResize);
-                      
-                      // Clear existing content and add textarea
-                      verificationCell.innerHTML = '';
-                      verificationCell.appendChild(textarea);
-                      textarea.focus();
-                      
-                      console.log(`Added textarea to verification cell for row ${rowIndex + 1} with default text`);
-                    } else {
-                      // Remove textarea when checkbox is unchecked
-                      const existingTextarea = verificationCell.querySelector('textarea');
-                      if (existingTextarea) {
-                        verificationCell.innerHTML = '';
-                        console.log(`Removed textarea from verification cell for row ${rowIndex + 1}`);
-                      }
-                    }
-                  } else {
-                    console.log(`Could not find verification cell in row ${rowIndex + 1}`);
-                    console.log('Available cells:', Array.from(cells).map(cell => cell.textContent.substring(0, 50)));
-                  }
-                };
-                
-                checkboxCell.appendChild(checkbox);
-                row.appendChild(checkboxCell);
-                checkboxesAdded = true;
-                console.log(`Added checkbox to row ${rowIndex + 1} in table B)`);
-              }
-            });
-          } else {
-            console.log(`Table ${tableIndex + 1} is NOT table B) - skipping checkbox addition`);
-            
-            // Fallback: if we haven't found table B) yet and this table looks like it could be it
-            if (!checkboxesAdded && tableIndex > 0) { // Skip first table (likely table A)
-              const fallbackCheck = (tableText.includes('amendment') || 
-                                   tableText.includes('revision') || 
-                                   tableText.includes('clause') ||
-                                   tableText.includes('recommended')) &&
-                                   // Exclude table C) "Redundancy Check"
-                                   !tableText.includes('redundancy') &&
-                                   !tableText.includes('c)') &&
-                                   !tableText.includes('table c');
-              
-              if (fallbackCheck) {
-                console.log(`Fallback: Table ${tableIndex + 1} might be table B) - adding checkboxes anyway...`);
-                
-                // Force add header if it doesn't exist
-                let headerRow = table.querySelector('thead tr');
-                if (!headerRow) {
-                  console.log('No thead found, creating one...');
-                  const thead = document.createElement('thead');
-                  headerRow = document.createElement('tr');
-                  thead.appendChild(headerRow);
-                  table.insertBefore(thead, table.firstChild);
-                }
-                
-                // Add Select header
-                const existingSelectHeader = headerRow.querySelector('th:last-child');
-                if (!existingSelectHeader || !existingSelectHeader.textContent.includes('Select')) {
-                  const selectHeader = document.createElement('th');
-                  selectHeader.textContent = 'Select';
-                  selectHeader.style.textAlign = 'center';
-                  selectHeader.style.width = '80px';
-                  selectHeader.style.backgroundColor = '#f8f9fa';
-                  selectHeader.style.border = '1px solid #dee2e6';
-                  selectHeader.style.padding = '8px';
-                  headerRow.appendChild(selectHeader);
-                  console.log('Added Select header to fallback table');
-                }
-                
-                // Add checkboxes to all rows
-                const allRows = table.querySelectorAll('tr');
-                console.log(`Found ${allRows.length} total rows in fallback table`);
-                
-                allRows.forEach((row, rowIndex) => {
-                  // Skip header row
-                  if (row.parentElement.tagName === 'THEAD') {
-                    return;
-                  }
-                  
-                  // Check if row already has checkbox
-                  const existingCheckbox = row.querySelector('input[type="checkbox"]');
-                  if (!existingCheckbox) {
-                    // Create new cell with checkbox
-                    const checkboxCell = document.createElement('td');
-                    checkboxCell.style.textAlign = 'center';
-                    checkboxCell.style.verticalAlign = 'middle';
-                    checkboxCell.style.border = '1px solid #dee2e6';
-                    checkboxCell.style.padding = '8px';
-                    checkboxCell.style.backgroundColor = '#ffffff';
-                    
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.style.width = '18px';
-                    checkbox.style.height = '18px';
-                    checkbox.style.cursor = 'pointer';
-                    checkbox.id = `checkbox-fallback-row-${rowIndex}`;
-                    checkbox.onclick = (e) => {
-                      console.log(`Checkbox clicked: ${checkbox.id}`);
-                      e.stopPropagation();
-                    };
-                    checkbox.onchange = (e) => {
-                      const isChecked = e.target.checked;
-                      console.log(`Fallback checkbox ${checkbox.id} changed to: ${isChecked}`);
-                      
-                      // Find the "Input Verification of Amendments" column in this row
-                      const cells = row.querySelectorAll('td');
-                      let verificationCell = null;
-                      
-                      // First try to find by header text
-                      const table = row.closest('table');
-                      const headerRow = table.querySelector('thead tr');
-                      if (headerRow) {
-                        const headerCells = headerRow.querySelectorAll('th');
-                        let verificationColumnIndex = -1;
-                        
-                        headerCells.forEach((headerCell, index) => {
-                          const headerText = headerCell.textContent.toLowerCase();
-                          if (headerText.includes('input verification') || 
-                              headerText.includes('verification of amendments') ||
-                              headerText.includes('verification')) {
-                            verificationColumnIndex = index;
-                            console.log(`Found verification column at index ${index}: "${headerCell.textContent}"`);
-                          }
-                        });
-                        
-                        if (verificationColumnIndex >= 0 && cells[verificationColumnIndex]) {
-                          verificationCell = cells[verificationColumnIndex];
-                        }
-                      }
-                      
-                      // Fallback: look for cell content
-                      if (!verificationCell) {
-                        cells.forEach(cell => {
-                          if (cell.textContent.toLowerCase().includes('input verification') || 
-                              cell.textContent.toLowerCase().includes('verification')) {
-                            verificationCell = cell;
-                          }
-                        });
-                      }
-                      
-                      if (verificationCell) {
-                        if (isChecked) {
-                          // Find the "Revised Clause (Formal Legal Language)" column to get default text
-                          let defaultText = '';
-                          const headerRow = table.querySelector('thead tr');
-                          if (headerRow) {
-                            const headerCells = headerRow.querySelectorAll('th');
-                            let revisedClauseColumnIndex = -1;
-                            
-                            headerCells.forEach((headerCell, index) => {
-                              const headerText = headerCell.textContent.toLowerCase();
-                              if (headerText.includes('revised clause') || 
-                                  headerText.includes('formal legal language') ||
-                                  headerText.includes('recommended amendment')) {
-                                revisedClauseColumnIndex = index;
-                                console.log(`Found revised clause column at index ${index}: "${headerCell.textContent}"`);
-                              }
-                            });
-                            
-                            if (revisedClauseColumnIndex >= 0 && cells[revisedClauseColumnIndex]) {
-                              defaultText = cells[revisedClauseColumnIndex].textContent.trim();
-                              console.log(`Default text from revised clause column: "${defaultText.substring(0, 100)}..."`);
-                            }
-                          }
-                          
-                          // Create textarea when checkbox is checked
-                          const textarea = document.createElement('textarea');
-                          textarea.placeholder = 'Enter verification notes...';
-                          textarea.value = defaultText; // Set default text from revised clause column
-                          textarea.style.width = '100%';
-                          textarea.style.minHeight = '60px';
-                          textarea.style.height = 'auto'; // Start with auto height
-                          textarea.style.padding = '4px';
-                          textarea.style.border = '1px solid #ccc';
-                          textarea.style.borderRadius = '4px';
-                          textarea.style.fontSize = '12px';
-                          textarea.style.resize = 'vertical'; // Allow vertical resizing
-                          textarea.style.overflowY = 'auto'; // Show scrollbar if needed
-                          textarea.id = `textarea-${checkbox.id}`;
-                          
-                          // Auto-resize textarea to fit content
-                          const autoResize = () => {
-                            textarea.style.height = 'auto';
-                            const scrollHeight = textarea.scrollHeight;
-                            const maxHeight = Math.max(200, scrollHeight); // Minimum 200px, or content height
-                            textarea.style.height = `${maxHeight}px`;
-                          };
-                          
-                          // Set initial height after content is loaded
-                          setTimeout(autoResize, 10);
-                          
-                          // Auto-resize on input
-                          textarea.addEventListener('input', autoResize);
-                          
-                          // Clear existing content and add textarea
-                          verificationCell.innerHTML = '';
-                          verificationCell.appendChild(textarea);
-                          textarea.focus();
-                          
-                          console.log(`Added textarea to verification cell for row ${rowIndex + 1} with default text`);
-                        } else {
-                          // Remove textarea when checkbox is unchecked
-                          const existingTextarea = verificationCell.querySelector('textarea');
-                          if (existingTextarea) {
-                            verificationCell.innerHTML = '';
-                            console.log(`Removed textarea from verification cell for row ${rowIndex + 1}`);
-                          }
-                        }
-                      } else {
-                        console.log(`Could not find verification cell in row ${rowIndex + 1}`);
-                        console.log('Available cells:', Array.from(cells).map(cell => cell.textContent.substring(0, 50)));
-                      }
-                    };
-                    
-                    checkboxCell.appendChild(checkbox);
-                    row.appendChild(checkboxCell);
-                    checkboxesAdded = true;
-                    console.log(`Added checkbox to row ${rowIndex + 1} in fallback table`);
-                  }
-                });
-              }
-            }
-          }
-        });
-        
-        return checkboxesAdded;
-      };
 
       // Try multiple times with different strategies
       let attempts = 0;
@@ -709,6 +772,61 @@ const ContractReview = () => {
         console.log('Trying final checkbox addition...');
         forceAddCheckboxes();
       }, 2000);
+    }
+  }, [aiReviewContent]);
+
+  // Add this useEffect to handle cell click for Input Verification of Amendments
+  useEffect(() => {
+    if (aiReviewContent && aiReviewRef.current) {
+      const container = aiReviewRef.current;
+      // Delegate click event to the container
+      const handleCellClick = (e) => {
+        // Only handle left click
+        if (e.button !== 0) return;
+        // Find the closest td
+        const td = e.target.closest('td');
+        if (!td) return;
+        // Find the table and header row
+        const table = td.closest('table');
+        if (!table) return;
+        const headerRow = table.querySelector('thead tr');
+        if (!headerRow) return;
+        const headerCells = headerRow.querySelectorAll('th');
+        // Find the column index of the clicked cell
+        const cellIndex = Array.from(td.parentElement.children).indexOf(td);
+        // Find if this column is Input Verification of Amendments
+        const headerText = headerCells[cellIndex]?.textContent?.toLowerCase() || '';
+        if (
+          headerText.includes('input verification') ||
+          headerText.includes('verification of amendments') ||
+          headerText.includes('verification')
+        ) {
+          // If the cell contains a textarea, use its value
+          let cellValue = '';
+          const textarea = td.querySelector('textarea');
+          if (textarea && textarea.value && textarea.value.trim()) {
+            cellValue = textarea.value.trim();
+          } else if (td.innerText && td.innerText.trim()) {
+            cellValue = td.innerText.trim();
+          } else if (td.textContent && td.textContent.trim()) {
+            cellValue = td.textContent.trim();
+          } else {
+            // Fallback: try to get value from a child node
+            const child = td.querySelector('*');
+            if (child && child.innerText && child.innerText.trim()) {
+              cellValue = child.innerText.trim();
+            }
+          }
+          console.log('Setting modal value to:', cellValue);
+          setVerificationModalValue(cellValue);
+          setVerificationModalCell(td);
+          setShowVerificationModal(true);
+        }
+      };
+      container.addEventListener('mousedown', handleCellClick);
+      return () => {
+        container.removeEventListener('mousedown', handleCellClick);
+      };
     }
   }, [aiReviewContent]);
 
@@ -799,8 +917,11 @@ const ContractReview = () => {
           const tableBData = extractTableBData();
           console.log('Extracted table B data:', tableBData);
 
-          // Save table B data to contract_updates table with contract_review_id
-          await saveContractUpdatesToDatabase(tableBData, documentText, contract_review_id);
+          // Filter to only checked items
+          const checkedTableBData = tableBData.filter(row => row.isChecked);
+          console.log('Checked table B data (to be saved):', checkedTableBData);
+          // Save only checked items to contract_updates table with contract_review_id
+          await saveContractUpdatesToDatabase(checkedTableBData, documentText, contract_review_id);
 
           // Navigate to the contract-review-update route with user email and contract_review_id
           navigate('/contract-review-update', {
@@ -1092,6 +1213,68 @@ const ContractReview = () => {
     }
   };
 
+  // Function to generate the revised contract draft (live preview)
+  const generateRevisedContractDraft = async () => {
+    if (!originalPdfText) return;
+    setIsGeneratingRevised(true);
+    try {
+      // Extract Table B data (current state)
+      const tableBData = extractTableBData();
+      if (!tableBData || tableBData.length === 0) {
+        setRevisedContract('');
+        setIsGeneratingRevised(false);
+        return;
+      }
+      // Format updates for the prompt
+      const updatesText = tableBData.map((update, i) => {
+        return `Update ${i + 1}:\n- Contractual Reference: ${update.contractualReference || 'N/A'}\n- Original Clause: ${update.originalClause || 'N/A'}\n- Recommended Legal Amendment: ${update.recommendedLegalAmendment || 'N/A'}\n- Input Verification: ${update.inputVerification || 'N/A'}\n`;
+      }).join('\n');
+      const prompt = `\nHere is the original employment contract:\n\n${originalPdfText}\n\nBelow are the contract updates to apply:\n\n${updatesText}\n\nPlease generate the full revised contract after applying these updates. Keep the structure, legal formatting, and numbering format and structure. Make sure to incorporate all the Input Verification into the appropriate sections of the contract. Adjust the article numbering so that the numbering is sequential, starting from Article 1 and continuing in proper order.\n`;
+      // Call the API
+      const response = await fetch(SIMPLIFY_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: prompt,
+          chatId: generateContractReviewId(),
+          uploads: []
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      let output = result.text || result.output || '[No response from Simplify]';
+      // Extract text between the markers if present
+      const startMarker = '=== START OF NEW REVISED CONTRACT ===';
+      const endMarker = '=== END OF NEW REVISED CONTRACT ==';
+      const startIdx = output.indexOf(startMarker);
+      const endIdx = output.indexOf(endMarker);
+      let between = '';
+      if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+        between = output.substring(startIdx + startMarker.length, endIdx).trim();
+      } else if (startIdx !== -1) {
+        between = output.substring(startIdx + startMarker.length).trim();
+      } else {
+        between = output;
+      }
+      setRevisedContract(between);
+      setEditableRevisedContract(between);
+    } catch (error) {
+      setRevisedContract('[Error generating revised contract draft]');
+    } finally {
+      setIsGeneratingRevised(false);
+    }
+  };
+
+  // When originalPdfText or Table B changes, regenerate the draft
+  useEffect(() => {
+    if (originalPdfText) {
+      generateRevisedContractDraft();
+    }
+    // eslint-disable-next-line
+  }, [originalPdfText]);
+
   return (
     <React.Fragment>
       <Row>
@@ -1214,6 +1397,51 @@ const ContractReview = () => {
         </Col>
       </Row>
 
+      {/* Debug section - only show when AI content is available */}
+      {/* Debug Tools card - HIDDEN */}
+      {/*
+      {aiReviewContent && (
+        <Row>
+          <Col xl={12} xxl={12}>
+            <Card>
+              <Card.Header>
+                <Card.Title as="h5">Debug Tools</Card.Title>
+              </Card.Header>
+              <Card.Body>
+                <Button 
+                  variant="info" 
+                  size="sm"
+                  onClick={testCheckboxCreation}
+                  style={{ marginRight: '10px' }}
+                >
+                  Test Checkbox Creation
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={() => {
+                    console.log('=== MANUAL CHECKBOX TEST ===');
+                    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                    console.log(`Found ${checkboxes.length} checkboxes on page`);
+                    checkboxes.forEach((checkbox, index) => {
+                      console.log(`Checkbox ${index}:`, checkbox.id, checkbox.checked);
+                      // Test clicking the checkbox
+                      checkbox.click();
+                      setTimeout(() => {
+                        console.log(`Checkbox ${index} after click:`, checkbox.checked);
+                      }, 100);
+                    });
+                  }}
+                >
+                  Test Checkbox Clicks
+                </Button>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      )}
+      */}
+
       <Row>
         <Col xl={12} xxl={12} className="text-start">
           <Button 
@@ -1221,7 +1449,7 @@ const ContractReview = () => {
             size="lg"
             onClick={handleSaveContractData}
             disabled={isSaving}
-            style={{ marginTop: '20px', marginBottom: '20px' }}
+            style={{ marginTop: '20px', marginBottom: '20px', marginRight: '10px' }}
           >
             {isSaving ? (
               <>
@@ -1239,8 +1467,131 @@ const ContractReview = () => {
               'Generate New Contract File'
             )}
           </Button>
+          {/* COPY PASTE & SAVE TO DATABASE buttons - HIDDEN */}
+          {/*
+          <Button
+            variant="primary"
+            size="lg"
+            style={{ marginTop: '20px', marginBottom: '20px', marginRight: '10px' }}
+            onClick={() => {
+              const textarea = document.getElementById('text_of_new_contract_draft');
+              if (textarea) {
+                textarea.select();
+                document.execCommand('copy');
+                // Paste the copied text into the Live Preview textarea (update state)
+                setEditableRevisedContract(textarea.value);
+              }
+            }}
+          >
+            COPY PASTE
+          </Button>
+          <Button
+            variant="warning"
+            size="lg"
+            style={{ marginTop: '20px', marginBottom: '20px' }}
+            onClick={async () => {
+              // Save the current content of the Live Preview textarea to the database
+              if (!selectedFile) {
+                alert('No contract file selected.');
+                return;
+              }
+              const contractName = selectedFile.name;
+              try {
+                // Find the contract in master_contract by contract_name and update revised_contract_text
+                const { error } = await supabase
+                  .from('master_contract')
+                  .update({ revised_contract_text: editableRevisedContract })
+                  .eq('contract_name', contractName);
+                if (error) {
+                  alert('Failed to save to database: ' + error.message);
+                } else {
+                  alert('Revised contract draft saved to database!');
+                }
+              } catch (err) {
+                alert('Error saving to database: ' + err.message);
+              }
+            }}
+          >
+            SAVE TO DATABASE
+          </Button>
+          */}
         </Col>
       </Row>
+
+      <Row>
+        <Col xl={12} xxl={12}>
+          {/* Live Preview: Fully Revised Contract Draft card - HIDDEN */}
+          {/*
+          <Card>
+            <Card.Header>
+              <Card.Title as="h5">Live Preview: Fully Revised Contract Draft</Card.Title>
+            </Card.Header>
+            <Card.Body>
+              {isGeneratingRevised ? (
+                <div className="text-center">
+                  <Spinner animation="border" role="status">
+                    <span className="visually-hidden">Generating...</span>
+                  </Spinner>
+                  <p className="mt-2">Generating revised contract draft...</p>
+                </div>
+              ) : (
+                <textarea
+                  id="text_of_new_contract_draft"
+                  className="form-control"
+                  style={{ minHeight: '300px', maxHeight: '400px', fontSize: '14px', lineHeight: '1.5', whiteSpace: 'pre-wrap', resize: 'vertical' }}
+                  value={editableRevisedContract}
+                  onChange={e => setEditableRevisedContract(e.target.value)}
+                  placeholder="The revised contract draft will appear here after you upload a contract and make changes."
+                />
+              )}
+            </Card.Body>
+          </Card>
+          */}
+        </Col>
+      </Row>
+
+      <Modal show={showVerificationModal} onHide={() => setShowVerificationModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Edit Input Verification of Amendments</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <textarea
+            className="form-control"
+            style={{ minHeight: '120px' }}
+            value={verificationModalValue}
+            onChange={e => {
+              setVerificationModalValue(e.target.value);
+            }}
+            autoFocus
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowVerificationModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={() => {
+            // Update the cell only when Save Changes is clicked
+            if (verificationModalCell) {
+              // Save the old value before updating
+              const oldValue = verificationModalCell.textContent;
+              verificationModalCell.textContent = verificationModalValue;
+              // Replace only the first exact occurrence of the previous text in the textarea
+              setEditableRevisedContract(prev => {
+                // Use the previous value of the cell (before change)
+                const previousText = oldValue;
+                if (!previousText || !prev.includes(previousText)) return prev;
+                // Replace only the first exact match
+                const idx = prev.indexOf(previousText);
+                if (idx === -1) return prev;
+                return prev.slice(0, idx) + verificationModalValue + prev.slice(idx + previousText.length);
+              });
+            }
+            setShowVerificationModal(false);
+          }}>
+            Save Changes
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </React.Fragment>
   );
 };

@@ -13,10 +13,24 @@ const menuItems = {
         //   url: '/contract-management'
         // },
         {
-          id: 'contract-review',
+          id: 'contract-management',
           title: 'Contract Management',
-          type: 'item',
-          url: '/contract-review'
+          type: 'collapse',
+          icon: 'icon-dashboard',
+          children: [
+            {
+              id: 'contract-review',
+              title: 'Review Contract',
+              type: 'item',
+              url: '/contract-review'
+            },
+            {
+              id: 'update-tracking',
+              title: 'Update Tracking',
+              type: 'item',
+              url: '/update-tracking'
+            }
+          ]
         },
         {
           id: 'corporate-governance',

@@ -74,6 +74,16 @@ const routes = [
       },
       {
         exact: 'true',
+        path: '/contract-review-update-contract',
+        element: lazy(() => import('./views/contract-review-update-contract'))
+      },
+      {
+        exact: 'true',
+        path: '/update-tracking',
+        element: lazy(() => import('./views/update-tracking'))
+      },
+      {
+        exact: 'true',
         path: '/logout',
         element: lazy(() => import('./views/logout'))
       },
@@ -131,6 +141,11 @@ const routes = [
         exact: 'true',
         path: '/sample-page',
         element: lazy(() => import('./views/extra/SamplePage'))
+      },
+      {
+        exact: 'true',
+        path: '/view-file-changes',
+        element: lazy(() => import('./views/view-file-changes'))
       },
       {
         path: '*',
