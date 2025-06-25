@@ -15,11 +15,15 @@ import mammoth from 'mammoth';
 // Set worker source
 GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-// Add API URL for contract revision agent
-const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/20f7238b-7947-492b-9aea-8931c80fbeb6';
+// Contract Review Agent - TRIAL - v2
+const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/e247eb0a-1035-400a-bcd2-38805ac78b5f';
 
 const ContractReview = () => {
   const [selectedFile, setSelectedFile] = useState(null);
+  const [underlyingAgreementFiles, setUnderlyingAgreementFiles] = useState([]);
+  const [reviewLanguage, setReviewLanguage] = useState('English');
+  const [partyPositioning, setPartyPositioning] = useState('');
+  const [riskPositioning, setRiskPositioning] = useState('Unilateral');
   const [isProcessing, setIsProcessing] = useState(false);
   const [reviewHistory, setReviewHistory] = useState([]);
   const [aiReviewContent, setAiReviewContent] = useState(null);
@@ -37,6 +41,154 @@ const ContractReview = () => {
 
   // Function to generate unique contract_review_id using uuid v4
   const generateContractReviewId = () => uuidv4();
+
+  // Handler for underlying agreement file input (multiple files, up to 10)
+  const handleUnderlyingAgreementFileChange = (event) => {
+    let newFiles = Array.from(event.target.files);
+    // Prevent duplicates by name and size
+    const existingNames = new Set(underlyingAgreementFiles.map(f => f.name + f.size));
+    newFiles = newFiles.filter(f => !existingNames.has(f.name + f.size));
+    const combined = [...underlyingAgreementFiles, ...newFiles].slice(0, 10);
+    setUnderlyingAgreementFiles(combined);
+  };
+
+  // Handler to remove a file from the list
+  const handleRemoveUnderlyingAgreementFile = (index) => {
+    setUnderlyingAgreementFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Extract text from PDF file
+  const extractPdfText = async (file) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await getDocument({ data: arrayBuffer }).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(item => item.str).join(' ') + '\n';
+    }
+    return text.trim();
+  };
+
+  // Extract text from DOCX file
+  const extractDocxText = async (file) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const { value } = await mammoth.extractRawText({ arrayBuffer });
+    return value.trim();
+  };
+
+  // Main handler for Conduct Review
+  const onConductReview = async (event) => {
+    event.preventDefault();
+    if (!selectedFile) {
+      alert('Please select an agreement file to review.');
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      // Generate uniqueID
+      const uniqueID = uuidv4();
+
+      // Extract text from Upload Agreement
+      let agreementFile = '';
+      if (selectedFile.type === 'application/pdf') {
+        agreementFile = await extractPdfText(selectedFile);
+      } else if (
+        selectedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        selectedFile.name.toLowerCase().endsWith('.docx')
+      ) {
+        agreementFile = await extractDocxText(selectedFile);
+      } else {
+        alert('Agreement file must be PDF or DOCX.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Get user's selections
+      const languageReviewMode = reviewLanguage;
+      const partyPosition = partyPositioning;
+      const riskPosition = riskPositioning;
+
+      // Extract text from each Underlying Agreement file
+      let underlyingAgreements = '';
+      if (underlyingAgreementFiles.length > 0) {
+        const uaTexts = [];
+        for (let i = 0; i < underlyingAgreementFiles.length; i++) {
+          const file = underlyingAgreementFiles[i];
+          let text = '';
+          if (file.type === 'application/pdf') {
+            text = await extractPdfText(file);
+          } else if (
+            file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+            file.name.toLowerCase().endsWith('.docx')
+          ) {
+            text = await extractDocxText(file);
+          } else {
+            text = '[Unsupported file type: ' + file.name + ']';
+          }
+          uaTexts.push(`Underlying Agreement #${i+1} (${file.name}):\n${text}`);
+        }
+        underlyingAgreements = uaTexts.join('\n\n');
+      } else {
+        underlyingAgreements = '[No underlying agreements uploaded]';
+      }
+
+      // Compose prompt
+      const prompt = `Here is the text from the uploaded Agreement to be reviewed: ${agreementFile}.
+Please conduct a legal review and analysis of this Agreement based on the uploaded Underlying Agreement files: ${underlyingAgreements},
+taking into account the user's Party Positioning: ${partyPosition}, and Risk Positioning: ${riskPosition}.`;
+
+      // Log the prompt string
+      console.log('--- Conduct Review Prompt ---');
+      console.log(prompt);
+      console.log('uniqueID (for chatId and contract_review_id):', uniqueID);
+      console.log('Selected Language Review Mode:', languageReviewMode);
+
+      // Call the AI review API
+      setAiReviewContent('<em>Processing AI review...</em>');
+      try {
+        const response = await fetch(SIMPLIFY_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: prompt,
+            chatId: uniqueID,
+            uploads: []
+          })
+        });
+        if (!response.ok) {
+          throw new Error(`AI Review API error: ${response.status}`);
+        }
+        const result = await response.json();
+        let aiText = result.text || result.output || '[No response from AI Review Agent]';
+        setAiReviewContent(aiText);
+      } catch (apiErr) {
+        setAiReviewContent('[Error from AI Review Agent: ' + apiErr.message + ']');
+        console.error(apiErr);
+      }
+      setIsProcessing(false);
+    } catch (err) {
+      setIsProcessing(false);
+      alert('Error during review: ' + err.message);
+      console.error(err);
+    }
+  };
+
+
+  // Handler for review language selection
+  const handleReviewLanguageChange = (event) => {
+    setReviewLanguage(event.target.value);
+  };
+
+  // Handler for party positioning input
+  const handlePartyPositioningChange = (event) => {
+    setPartyPositioning(event.target.value);
+  };
+
+  // Handler for risk positioning select
+  const handleRiskPositioningChange = (event) => {
+    setRiskPositioning(event.target.value);
+  };
 
   // Test function to manually trigger checkbox creation (for debugging)
   const testCheckboxCreation = () => {
@@ -1284,19 +1436,91 @@ const ContractReview = () => {
               <Card.Title as="h5">Contract Review System</Card.Title>
             </Card.Header>
             <Card.Body>
-              <Form onSubmit={handleFileUpload}>
-                <Form.Group controlId="formFile" className="mb-3">
-                  <Form.Label>Upload Contract for Review</Form.Label>
-                  <Form.Control 
-                    type="file" 
-                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    onChange={handleFileChange} 
-                    disabled={isProcessing} 
-                  />
-                  <Form.Text className="text-muted">
-                    Upload a PDF or Word (.docx) contract file for AI-powered review and analysis.
-                  </Form.Text>
-                </Form.Group>
+              <Form onSubmit={onConductReview}>
+                 <Row>
+                  <Col md={6} sm={12}>
+                    <Form.Group controlId="formFile" className="mb-3">
+                      <Form.Label>Upload Agreement</Form.Label>
+                      <Form.Control 
+                        type="file" 
+                        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        onChange={handleFileChange} 
+                        disabled={isProcessing} 
+                      />
+                      <Form.Text className="text-muted">
+                        Upload a PDF or Word (.docx) contract file for AI-powered review and analysis.
+                      </Form.Text>
+                    </Form.Group>
+                    <Form.Group controlId="reviewLanguage" className="mb-3">
+                      <Form.Label>Select Language Review Mode</Form.Label>
+                      <Form.Select value={reviewLanguage} onChange={handleReviewLanguageChange} disabled={isProcessing}>
+                        <option value="English">English</option>
+                        <option value="Indonesian">Indonesian</option>
+                      </Form.Select>
+                    </Form.Group>
+                    <Form.Group controlId="partyPositioning" className="mb-3">
+                      <Form.Label>Party Positioning</Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="Enter party positioning"
+                        value={partyPositioning}
+                        onChange={handlePartyPositioningChange}
+                        disabled={isProcessing}
+                      />
+                    </Form.Group>
+                    <Form.Group controlId="riskPositioning" className="mb-3">
+                      <Form.Label>Risk Positioning</Form.Label>
+                      <Form.Select
+                        value={riskPositioning}
+                        onChange={handleRiskPositioningChange}
+                        disabled={isProcessing}
+                      >
+                        <option value="Unilateral">Unilateral</option>
+                        <option value="Mutual">Mutual</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6} sm={12}>
+                    <Form.Group controlId="underlyingAgreementFile" className="mb-3">
+                      <Form.Label>Underlying Agreement</Form.Label>
+                      <Form.Control
+                        type="file"
+                        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        onChange={handleUnderlyingAgreementFileChange}
+                        multiple
+                        disabled={isProcessing || underlyingAgreementFiles.length >= 10}
+                      />
+                      <Form.Text className="text-muted">
+                        (Optional) Upload up to 10 underlying agreement documents for additional context.
+                      </Form.Text>
+                      {underlyingAgreementFiles && underlyingAgreementFiles.length > 0 && (
+                        <ul style={{marginTop: '10px', paddingLeft: 0, listStyle: 'none'}}>
+                          {underlyingAgreementFiles.map((file, idx) => (
+                            <li key={idx} style={{display: 'flex', alignItems: 'center', marginBottom: 4}}>
+                              <span style={{flex: 1, wordBreak: 'break-all'}}>{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveUnderlyingAgreementFile(idx)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#dc3545',
+                                  cursor: 'pointer',
+                                  marginLeft: 8,
+                                  fontSize: 18
+                                }}
+                                aria-label={`Remove ${file.name}`}
+                              >
+                                {/* Use react-icons/fa trash icon if available */}
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{display:'inline',verticalAlign:'middle'}}><line x1="4.5" y1="4.5" x2="11.5" y2="11.5" stroke="#dc3545" strokeWidth="2" strokeLinecap="round"/><line x1="11.5" y1="4.5" x2="4.5" y2="11.5" stroke="#dc3545" strokeWidth="2" strokeLinecap="round"/></svg>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </Form.Group>
+                  </Col>
+                </Row>
                 <Button variant="primary" type="submit" disabled={isProcessing}>
                   {isProcessing ? (
                     <>
@@ -1311,7 +1535,7 @@ const ContractReview = () => {
                       Reviewing Contract...
                     </>
                   ) : (
-                    'Start Review'
+                    'Conduct Review'
                   )}
                 </Button>
               </Form>

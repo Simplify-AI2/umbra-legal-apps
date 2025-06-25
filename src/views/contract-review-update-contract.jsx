@@ -10,7 +10,24 @@ const ContractReviewUpdateContract = () => {
             <Card.Title as="h4">Contract Review Update Contract</Card.Title>
           </Card.Header>
           <Card.Body>
-            <p>This is the /contract-review-update-contract page. Add your content here.</p>
+            <Row>
+              <Col md={6}>
+                <form>
+                  <div className="mb-3">
+                    <label htmlFor="contractFile" className="form-label">Upload Contract for Review</label>
+                    <input type="file" className="form-control" id="contractFile" name="contractFile" />
+                  </div>
+                </form>
+              </Col>
+              <Col md={6}>
+                <form>
+                  <div className="mb-3">
+                    <label htmlFor="underlyingAgreement" className="form-label">Underlying Agreement</label>
+                    <input type="file" className="form-control" id="underlyingAgreement" name="underlyingAgreement" />
+                  </div>
+                </form>
+              </Col>
+            </Row>
           </Card.Body>
         </Card>
       </Col>

@@ -11,7 +11,11 @@ import html2pdf from 'html2pdf.js';
 //const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/c86edd85-f451-4bd6-8d7f-05a73c324c23';
 
 // Contract Revision Agent - TRIAL
-const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/20f7238b-7947-492b-9aea-8931c80fbeb6';
+//const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/20f7238b-7947-492b-9aea-8931c80fbeb6';
+
+// Contract Revision Agent - TRIAL - v2
+const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/8f871446-88e8-40b1-9268-1fb5d963f3de';
+
 
 // Utility to strip HTML tags
 function stripHtml(html) {
