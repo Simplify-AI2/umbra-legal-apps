@@ -74,6 +74,11 @@ const routes = [
       },
       {
         exact: 'true',
+        path: '/contract-review-update-translation',
+        element: lazy(() => import('./views/contract-review-update-translation'))
+      },
+      {
+        exact: 'true',
         path: '/contract-review-update-contract',
         element: lazy(() => import('./views/contract-review-update-contract'))
       },

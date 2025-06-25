@@ -13,6 +13,8 @@ import html2pdf from 'html2pdf.js';
 // Contract Revision Agent - TRIAL
 //const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/20f7238b-7947-492b-9aea-8931c80fbeb6';
 
+
+
 // Contract Revision Agent - TRIAL - v2
 const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/8f871446-88e8-40b1-9268-1fb5d963f3de';
 
@@ -457,13 +459,13 @@ const ContractReviewUpdate = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
-      // navigate('/contract-review');
     } catch (error) {
       console.error('Error exporting to Word:', error);
       alert('Error exporting to Word: ' + error.message);
     }
   };
+
+
 
   const exportToPDF = () => {
     if (!contractRef.current) return;
@@ -1009,17 +1011,61 @@ const ContractReviewUpdate = () => {
                         navigate('/view-file-changes', {
                           state: { contractReviewId: contractData.contract_review_id }
                         });
+                      }
+                    }}
+                    style={{ marginRight: '10px' }}
+                  >
+                    View File Changes
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      const id = contractData?.contract_review_id || contractData?.chatId;
+                      if (id) {
+                        navigate('/contract-review-update-translation', {
+                          state: { contractReviewId: id }
+                        });
                       } else {
-                        alert('No contract review ID available.');
+                        alert('No contract review ID or chat ID available.');
                       }
                     }}
                   >
-                    See File Changes
+                    NEXT (Document Translation)
                   </Button>
                 </div>
               </div>
-
             </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row>
+        <Col xl={12} xxl={12}>
+          <Card className="mt-4">
+            <Card.Header>
+              <Card.Title as="h5">New Revised Contract in HTML</Card.Title>
+            </Card.Header>
+            <Card.Body>
+  <div style={{ border: '1px solid #eee', borderRadius: '4px', padding: '16px', background: '#fafbfc', minHeight: '120px' }}>
+    {wysiwygContent ? (
+      <>
+        <div style={{ marginBottom: '16px' }}>
+          <strong>Rendered HTML:</strong>
+          <div dangerouslySetInnerHTML={{ __html: wysiwygContent }} />
+        </div>
+        <div>
+          <strong>Original HTML (raw):</strong>
+          <pre style={{ background: '#222', color: '#eee', borderRadius: '4px', padding: '12px', fontSize: '0.95em', overflowX: 'auto' }}>
+            {wysiwygContent}
+          </pre>
+        </div>
+      </>
+    ) : (
+      <span style={{ color: '#888' }}>[No revised contract available]</span>
+    )}
+  </div>
+</Card.Body>
           </Card>
         </Col>
       </Row>
@@ -1042,4 +1088,4 @@ const ContractReviewUpdate = () => {
   );
 };
 
-export default ContractReviewUpdate; 
+export default ContractReviewUpdate;
