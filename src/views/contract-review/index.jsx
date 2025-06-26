@@ -969,10 +969,7 @@ taking into account the user's Party Positioning: ${partyPosition}, and Risk Pos
               cellValue = child.innerText.trim();
             }
           }
-          console.log('Setting modal value to:', cellValue);
-          setVerificationModalValue(cellValue);
-          setVerificationModalCell(td);
-          setShowVerificationModal(true);
+          console.log('Clicked Input Verification of Amendments cell. Modal popup suppressed.');
         }
       };
       container.addEventListener('mousedown', handleCellClick);

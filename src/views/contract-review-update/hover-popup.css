@@ -1,0 +1,35 @@
+.wysiwyg-highlighted {
+  background-color: #a259f7 !important; /* purple */
+  color: #fff !important;
+  border-radius: 3px;
+  padding: 0 2px;
+  cursor: pointer;
+  transition: box-shadow 0.1s;
+}
+
+.wysiwyg-highlighted:hover {
+  box-shadow: 0 0 0 3px #c7a5f7;
+}
+
+.wysiwyg-popup {
+  position: absolute;
+  z-index: 9999;
+  background: #fff;
+  color: #222;
+  border: 1px solid #a259f7;
+  border-radius: 8px;
+  padding: 12px 18px;
+  box-shadow: 0 8px 24px rgba(80,40,120,0.13);
+  min-width: 220px;
+  max-width: 350px;
+  font-size: 1rem;
+  pointer-events: auto;
+  transition: opacity 0.15s;
+  opacity: 1;
+}
+
+.wysiwyg-popup-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}

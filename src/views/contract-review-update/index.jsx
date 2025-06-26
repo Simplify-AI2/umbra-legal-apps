@@ -6,6 +6,7 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import html2pdf from 'html2pdf.js';
+import './hover-popup.css';
 
 // Contract Revision Agent
 //const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/c86edd85-f451-4bd6-8d7f-05a73c324c23';
@@ -1003,6 +1004,7 @@ const ContractReviewUpdate = () => {
                     )}
                   </Button>
                   */}
+                  {/*
                   <Button
                     variant="info"
                     size="sm"
@@ -1017,10 +1019,29 @@ const ContractReviewUpdate = () => {
                   >
                     View File Changes
                   </Button>
+                  */}
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => {
+                    onClick={async () => {
+                      // Save to master_contract.revised_contract_text before navigating
+                      if (contractData?.contract_review_id) {
+                        try {
+                          const plainText = stripHtml(wysiwygContent);
+                          await supabase
+                            .from('master_contract')
+                            .update({ 
+                              revised_contract_text: wysiwygContent,
+                              revised_contract_plain_text: plainText,
+                              updated_at: new Date().toISOString()
+                            })
+                            .eq('contract_review_id', contractData.contract_review_id)
+                            .eq('status', 'pending');
+                        } catch (error) {
+                          // Optionally handle error, but don't block navigation
+                          console.error('Failed to save revised contract before translation:', error);
+                        }
+                      }
                       const id = contractData?.contract_review_id || contractData?.chatId;
                       if (id) {
                         navigate('/contract-review-update-translation', {
@@ -1049,21 +1070,24 @@ const ContractReviewUpdate = () => {
             <Card.Body>
   <div style={{ border: '1px solid #eee', borderRadius: '4px', padding: '16px', background: '#fafbfc', minHeight: '120px' }}>
     {wysiwygContent ? (
-      <>
-        <div style={{ marginBottom: '16px' }}>
-          <strong>Rendered HTML:</strong>
-          <div dangerouslySetInnerHTML={{ __html: wysiwygContent }} />
-        </div>
-        <div>
-          <strong>Original HTML (raw):</strong>
-          <pre style={{ background: '#222', color: '#eee', borderRadius: '4px', padding: '12px', fontSize: '0.95em', overflowX: 'auto' }}>
-            {wysiwygContent}
-          </pre>
-        </div>
-      </>
-    ) : (
-      <span style={{ color: '#888' }}>[No revised contract available]</span>
-    )}
+  <>
+    <div style={{ marginBottom: '16px', position: 'relative' }}>
+      <strong>Rendered HTML:</strong>
+      <HoverableWysiwygPreview
+        wysiwygContent={wysiwygContent}
+        contractUpdates={contractUpdates}
+      />
+    </div>
+    <div>
+      <strong>Original HTML (raw):</strong>
+      <pre style={{ background: '#222', color: '#eee', borderRadius: '4px', padding: '12px', fontSize: '0.95em', overflowX: 'auto' }}>
+        {wysiwygContent}
+      </pre>
+    </div>
+  </>
+) : (
+  <span style={{ color: '#888' }}>[No revised contract available]</span>
+)}
   </div>
 </Card.Body>
           </Card>
@@ -1087,5 +1111,107 @@ const ContractReviewUpdate = () => {
     </React.Fragment>
   );
 };
+
+// --- HoverableWysiwygPreview component ---
+function HoverableWysiwygPreview({ wysiwygContent, contractUpdates }) {
+  const containerRef = useRef(null);
+  const [popup, setPopup] = useState({ visible: false, text: '', x: 0, y: 0 });
+
+  // Helper: Find update by update_id
+  function getUpdateById(updateId) {
+    return contractUpdates.find(u => String(u.id) === String(updateId));
+  }
+
+  // Inject data-update-id and highlight class into purple spans if not present
+  function injectDataAttributes(html) {
+    if (!contractUpdates || contractUpdates.length === 0) return html;
+    let outHtml = html;
+    contractUpdates.forEach(update => {
+      // Assume that the update's text is uniquely highlighted (may need adjustment for real data)
+      // Use a regex to find spans with purple background and inject data-update-id
+      const regex = new RegExp(
+        `<span([^>]*?)style=["'][^"']*background(-color)?: ?#a259f7[^"']*["']([^>]*?)>([\s\S]*?)<\/span>`,
+        'gi'
+      );
+      outHtml = outHtml.replace(regex, (match, beforeStyle, _, afterStyle, innerText) => {
+        // Avoid double-injecting
+        if (match.includes('data-update-id')) return match;
+        // Optionally, match by update text
+        const matchText = innerText.trim() === (update.highlighted_text || '').trim();
+        // Only inject if the text matches or always inject if only one match
+        if (matchText || contractUpdates.length === 1) {
+          return `<span${beforeStyle} style="background-color:#a259f7;color:#fff;${afterStyle}" data-update-id="${update.id}" class="wysiwyg-highlighted">${innerText}</span>`;
+        }
+        return match;
+      });
+    });
+    return outHtml;
+  }
+
+  // Render HTML with injected attributes
+  const processedHtml = injectDataAttributes(wysiwygContent);
+
+  // Attach hover listeners after render
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    function handleMouseOver(e) {
+      const target = e.target.closest('.wysiwyg-highlighted');
+      if (target && target.dataset.updateId) {
+        const update = getUpdateById(target.dataset.updateId);
+        if (update) {
+          const rect = target.getBoundingClientRect();
+          // Calculate popup position relative to container
+          const containerRect = container.getBoundingClientRect();
+          setPopup({
+            visible: true,
+            text: update.requested_update || update.update_text || '[No update details]',
+            x: rect.left - containerRect.left + rect.width / 2,
+            y: rect.bottom - containerRect.top + 8 // 8px below
+          });
+        }
+      }
+    }
+    function handleMouseOut(e) {
+      const target = e.target.closest('.wysiwyg-highlighted');
+      if (target) {
+        setPopup(p => ({ ...p, visible: false }));
+      }
+    }
+    function handleClick(e) {
+      const target = e.target.closest('.wysiwyg-highlighted');
+      if (target) {
+        alert(target.textContent.trim());
+      }
+    }
+    container.addEventListener('mouseover', handleMouseOver);
+    container.addEventListener('mouseout', handleMouseOut);
+    container.addEventListener('click', handleClick);
+    return () => {
+      container.removeEventListener('mouseover', handleMouseOver);
+      container.removeEventListener('mouseout', handleMouseOut);
+      container.removeEventListener('click', handleClick);
+    };
+  }, [contractUpdates, wysiwygContent]);
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <div dangerouslySetInnerHTML={{ __html: processedHtml }} />
+      <div
+        className={
+          popup.visible ? 'wysiwyg-popup' : 'wysiwyg-popup wysiwyg-popup-hidden'
+        }
+        style={{
+          left: popup.x,
+          top: popup.y,
+          pointerEvents: popup.visible ? 'auto' : 'none',
+        }}
+      >
+        {popup.text}
+      </div>
+    </div>
+  );
+}
 
 export default ContractReviewUpdate;

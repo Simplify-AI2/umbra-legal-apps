@@ -1,0 +1,8 @@
+.english-preview-html-box b,
+.english-preview-html-box strong,
+.english-preview-html-box [style*='font-weight:bold'],
+.english-preview-html-box [style*='font-weight: 700'],
+.english-preview-html-box [style*='font-weight: 800'],
+.english-preview-html-box [style*='font-weight: 900'] {
+  font-weight: bold !important;
+}
