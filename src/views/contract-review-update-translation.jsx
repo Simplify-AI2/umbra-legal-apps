@@ -16,6 +16,7 @@ const ContractReviewUpdateTranslation = () => {
   // ...existing hooks and code...
   const [selectedLanguage, setSelectedLanguage] = useState('Indonesian');
   const [previewHtml, setPreviewHtml] = useState('');
+  // Removed: translation and bilingualTranslation state variables
 
   // Unified translate handler
   const handleUnifiedTranslate = async () => {
@@ -46,9 +47,7 @@ const ContractReviewUpdateTranslation = () => {
       translated = result.text || result.output || '';
       setPreviewHtml(translated);
       // Optionally update individual language states for backward compatibility
-      if (selectedLanguage === 'English') setTranslation(translated);
-      if (selectedLanguage === 'Indonesian') setTranslation(translated);
-      if (selectedLanguage === 'Bilingual') setBilingualTranslation(translated);
+      // Removed: setTranslation and setBilingualTranslation
       if (!translated) {
         setError('No translation returned from API.');
         setLoading(false);
@@ -329,16 +328,8 @@ const ContractReviewUpdateTranslation = () => {
         <Card.Title as="h4">Document Translation</Card.Title>
       </Card.Header>
       <Card.Body>
-        <p>
-          <strong>Review Contract ID / Chat ID:</strong> {contractReviewId || <span style={{color:'red'}}>Not provided</span>}
-        </p>
         {error && <Alert variant="danger">{error}</Alert>}
-        {success && <Alert variant="success">Translation saved to database!</Alert>}
-        <div style={{ marginBottom: 16 }}>
-          <strong>Original (revised_contract_text):</strong>
-          <pre style={{ background: '#f3f3f3', padding: 8, borderRadius: 4, maxHeight: 200, overflow: 'auto' }}>{revisedText || '[No text]'}
-          </pre>
-        </div>
+        {success && <Alert variant="success">Document successfully translated!</Alert>}
         {/*
          <Button
            variant="primary"
@@ -374,18 +365,6 @@ const ContractReviewUpdateTranslation = () => {
            Back
          </Button>
          */}
-        <Button
-          variant="success"
-          style={{ float: 'right' }}
-          onClick={() => {
-            const id = contractReviewId || chatId;
-            if (id) {
-              navigate('/contract-review-update-download', { state: { contractReviewId: id } });
-            }
-          }}
-        >
-          Next Step &gt;&gt;
-        </Button>
         <div style={{ marginTop: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
             <label htmlFor="select-language"><strong>Select Language:</strong></label>
@@ -414,78 +393,27 @@ const ContractReviewUpdateTranslation = () => {
             className="english-preview-html-box"
             dangerouslySetInnerHTML={{ __html: previewHtml }}
           />
-          <div style={{ textAlign: 'right', marginTop: 16 }}>
-            <Button
-              variant="success"
-              onClick={() => {
-                const id = contractReviewId || chatId;
-                navigate('/contract-review-update-download', {
-                  state: {
-                    contractReviewId: id,
-                    selectedLanguage,
-                    translationResult: previewHtml
-                  }
-                });
-              }}
-            >
-              Next Step &gt;&gt;&gt;
-            </Button>
-          </div>
+          {success && (
+            <div style={{ textAlign: 'right', marginTop: 16 }}>
+              <Button
+                variant="success"
+                onClick={() => {
+                  const id = contractReviewId || chatId;
+                  navigate('/contract-review-update-download', {
+                    state: {
+                      contractReviewId: id,
+                      selectedLanguage,
+                      translationResult: previewHtml
+                    }
+                  });
+                }}
+              >
+                Next Step &gt;&gt;&gt;
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Collapsible Indonesian Preview */}
-        <div style={{ marginTop: 24 }}>
-          <Accordion>
-            <Accordion.Item eventKey="0">
-              <Accordion.Header>Translated Preview : Indonesian</Accordion.Header>
-              <Accordion.Body>
-                <div>
-                  <strong>Preview:</strong>
-                  {translation ? (
-                    <div
-                      style={{ background: '#e6f7ff', padding: 8, borderRadius: 4, maxHeight: 200 }}
-                      className="english-preview-html-box"
-                      dangerouslySetInnerHTML={{ __html: translation }}
-                    />
-                  ) : (
-                    <span style={{ color: '#888' }}>[No Indonesian translation available]</span>
-                  )}
-                </div>
-              </Accordion.Body>
-            </Accordion.Item>
-            <Accordion.Item eventKey="1">
-              <Accordion.Header>Translated Preview : English</Accordion.Header>
-              <Accordion.Body>
-                <div>
-                  <strong>Preview:</strong>
-                  {translation ? (
-                    <div style={{ background: '#f9f9f9', padding: 8, borderRadius: 4, minHeight: 60 }}
-                         dangerouslySetInnerHTML={{ __html: translation }} />
-                  ) : (
-                    <span style={{ color: '#888' }}>[No English translation available]</span>
-                  )}
-                </div>
-              </Accordion.Body>
-            </Accordion.Item>
-            <Accordion.Item eventKey="2">
-              <Accordion.Header>Translated Preview : Bilingual</Accordion.Header>
-              <Accordion.Body>
-                <div>
-                  <strong>Preview:</strong>
-                  {bilingualTranslation ? (
-                    <div
-                      style={{ background: '#e6f7ff', padding: 8, borderRadius: 4, maxHeight: 200 }}
-                      className="english-preview-html-box"
-                      dangerouslySetInnerHTML={{ __html: bilingualTranslation }}
-                    />
-                  ) : (
-                    <span style={{ color: '#888' }}>[No bilingual translation available]</span>
-                  )}
-                </div>
-              </Accordion.Body>
-            </Accordion.Item>
-          </Accordion>
-        </div>
 
         {/* Download PDF Button */}
         <div style={{ marginTop: 16 }}>

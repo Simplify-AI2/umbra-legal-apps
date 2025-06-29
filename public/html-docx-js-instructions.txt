@@ -1,0 +1,5 @@
+Add the following script tag to your public/index.html before the closing </body> tag:
+
+<script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
+
+This enables the Export To TinyMCE WORD button to work correctly in Vite/React by providing htmlDocx as a global variable.

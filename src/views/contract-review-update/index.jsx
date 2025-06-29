@@ -17,7 +17,10 @@ import './hover-popup.css';
 
 
 // Contract Revision Agent - TRIAL - v2
-const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/8f871446-88e8-40b1-9268-1fb5d963f3de';
+//const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/8f871446-88e8-40b1-9268-1fb5d963f3de';
+
+// Contract Revision Agent - TRIAL - v3
+const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/3243bd2d-4aa1-4381-ae8d-0a3d35f514bf';
 
 
 // Utility to strip HTML tags
@@ -898,44 +901,6 @@ const ContractReviewUpdate = () => {
   // Original view for manual mode (when not auto-generated)
   return (
     <React.Fragment>
-      {originalContractText && (
-        <Row>
-          <Col xl={12} xxl={12}>
-            <Card className="mb-4">
-              <Card.Header style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => setShowOriginalContract(v => !v)}>
-                <Card.Title as="h5" style={{ width: '100%', marginBottom: 0 }}>
-                  Original Contract text
-                  <span style={arrowStyle}>▶</span>
-                </Card.Title>
-              </Card.Header>
-              <div style={collapseStyle}>
-                {showOriginalContract && (
-                  <pre style={{whiteSpace:'pre-wrap', margin: 0}}>{originalContractText}</pre>
-                )}
-              </div>
-            </Card>
-          </Col>
-        </Row>
-      )}
-      {updatesText && (
-        <Row>
-          <Col xl={12} xxl={12}>
-            <Card className="mb-4">
-              <Card.Header style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => setShowContractUpdates(v => !v)}>
-                <Card.Title as="h5" style={{ width: '100%', marginBottom: 0 }}>
-                  Contract Updates
-                  <span style={arrowUpdatesStyle}>▶</span>
-                </Card.Title>
-              </Card.Header>
-              <div style={collapseUpdatesStyle}>
-                {showContractUpdates && (
-                  <pre style={{whiteSpace:'pre-wrap', margin: 0}}>{updatesText}</pre>
-                )}
-              </div>
-            </Card>
-          </Col>
-        </Row>
-      )}
 
       <Row>
         <Col xl={12} xxl={12}>
@@ -971,14 +936,6 @@ const ContractReviewUpdate = () => {
                   />
                 </div>
                 <div className="mt-3">
-                  <Button
-                    variant="outline-success"
-                    size="sm"
-                    onClick={exportToWord}
-                    style={{ marginRight: '10px' }}
-                  >
-                    Export Edited to WORD
-                  </Button>
                   {/*
                   <Button
                     variant="primary"
@@ -1052,7 +1009,7 @@ const ContractReviewUpdate = () => {
                       }
                     }}
                   >
-                    NEXT (Document Translation)
+                    NEXT STEP
                   </Button>
                 </div>
               </div>
@@ -1061,38 +1018,6 @@ const ContractReviewUpdate = () => {
         </Col>
       </Row>
 
-      <Row>
-        <Col xl={12} xxl={12}>
-          <Card className="mt-4">
-            <Card.Header>
-              <Card.Title as="h5">New Revised Contract in HTML</Card.Title>
-            </Card.Header>
-            <Card.Body>
-  <div style={{ border: '1px solid #eee', borderRadius: '4px', padding: '16px', background: '#fafbfc', minHeight: '120px' }}>
-    {wysiwygContent ? (
-  <>
-    <div style={{ marginBottom: '16px', position: 'relative' }}>
-      <strong>Rendered HTML:</strong>
-      <HoverableWysiwygPreview
-        wysiwygContent={wysiwygContent}
-        contractUpdates={contractUpdates}
-      />
-    </div>
-    <div>
-      <strong>Original HTML (raw):</strong>
-      <pre style={{ background: '#222', color: '#eee', borderRadius: '4px', padding: '12px', fontSize: '0.95em', overflowX: 'auto' }}>
-        {wysiwygContent}
-      </pre>
-    </div>
-  </>
-) : (
-  <span style={{ color: '#888' }}>[No revised contract available]</span>
-)}
-  </div>
-</Card.Body>
-          </Card>
-        </Col>
-      </Row>
 
       {/* HIDE: Back to Contract Review button */}
       {/*

@@ -6,3 +6,8 @@
 .english-preview-html-box [style*='font-weight: 900'] {
   font-weight: bold !important;
 }
+
+/* Hide TinyMCE branding */
+.tox-statusbar__branding {
+  display: none !important;
+}

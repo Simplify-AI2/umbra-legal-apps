@@ -16,9 +16,125 @@ import mammoth from 'mammoth';
 GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 // Contract Review Agent - TRIAL - v2
-const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/e247eb0a-1035-400a-bcd2-38805ac78b5f';
+//const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/e247eb0a-1035-400a-bcd2-38805ac78b5f';
+
+// Contract Review Agent - TRIAL - v3
+const SIMPLIFY_API_URL = 'https://workflow.simplifygenai.id/api/v1/prediction/f6b84cfa-342d-43f1-b858-23ceacb80865';
+
 
 const ContractReview = () => {
+  // NEW: Function to force add checkboxes to tables A, B, and C with new logic
+  const forceAddCheckboxesNew = () => {
+    const container = aiReviewRef.current;
+    if (!container) {
+      console.log('Container not found');
+      return false;
+    }
+
+    const allTables = container.querySelectorAll('table');
+    let checkboxesAdded = false;
+
+    allTables.forEach((table, tableIndex) => {
+      const headerRow = table.querySelector('thead tr') || table.querySelector('tr');
+      const headerTexts = Array.from(headerRow?.children || []).map(cell => cell.textContent.trim());
+      const headerString = headerTexts.join(' ').toLowerCase();
+
+      // Table A: Compliance Assessment and Legal Justification (no checkboxes)
+      if (headerString.includes('compliance assessment and legal justification')) {
+        // Do nothing
+        return;
+      }
+
+      // Table B: Recommended Legal Amendments and Clause Revisions
+      if (headerString.includes('recommended legal amendments and clause revisions')) {
+        // Ensure Select header exists
+        if (headerRow && !headerTexts.some(text => text.toLowerCase().includes('select'))) {
+          const selectHeader = document.createElement('th');
+          selectHeader.textContent = 'Select';
+          headerRow.appendChild(selectHeader);
+        }
+        // Add checkboxes to rows (skip header)
+        const rows = table.querySelectorAll('tbody tr, tr');
+        rows.forEach((row, rowIdx) => {
+          if (row.parentElement.tagName === 'THEAD') return;
+          // Only add if not already present
+          if (!row.querySelector('.table-b-checkbox')) {
+            const td = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'table-b-checkbox';
+            checkbox.id = `tableB_checkbox_${tableIndex}_${rowIdx}`;
+            checkbox.onchange = (e) => {
+              // When checked, add readonly textarea to the row
+              let textarea = row.querySelector('.table-b-textarea');
+              if (e.target.checked && !textarea) {
+                textarea = document.createElement('textarea');
+                textarea.className = 'table-b-textarea';
+                textarea.readOnly = true;
+                textarea.style.width = '100%';
+                textarea.style.minHeight = '60px';
+                textarea.style.margin = '4px 0';
+                textarea.value = '';
+                row.appendChild(textarea);
+              } else if (!e.target.checked && textarea) {
+                textarea.remove();
+              }
+            };
+            td.appendChild(checkbox);
+            row.appendChild(td);
+            checkboxesAdded = true;
+          }
+        });
+        return;
+      }
+
+      // Table C: Redundancy Check (header OR previous sibling contains 'Redundancy Check')
+      let isTableC = headerString.includes('redundancy check');
+      if (!isTableC) {
+        // Check previous sibling (element or text node)
+        let prev = table.previousSibling;
+        while (prev && prev.nodeType !== 1 && prev.nodeType !== 3) prev = prev.previousSibling;
+        if (prev) {
+          let prevText = '';
+          if (prev.nodeType === 3) {
+            prevText = prev.textContent || prev.nodeValue || '';
+          } else if (prev.nodeType === 1) {
+            prevText = prev.textContent || '';
+          }
+          if (prevText.toLowerCase().includes('redundancy check')) {
+            isTableC = true;
+          }
+        }
+      }
+      if (isTableC) {
+        // Ensure Select header exists
+        if (headerRow && !headerTexts.some(text => text.toLowerCase().includes('select'))) {
+          const selectHeader = document.createElement('th');
+          selectHeader.textContent = 'Select';
+          headerRow.appendChild(selectHeader);
+        }
+        // Add checkboxes to rows (skip header)
+        const rows = table.querySelectorAll('tbody tr, tr');
+        rows.forEach((row, rowIdx) => {
+          if (row.parentElement.tagName === 'THEAD') return;
+          // Only add if not already present
+          if (!row.querySelector('.table-c-checkbox')) {
+            const td = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'table-c-checkbox';
+            checkbox.id = `tableC_redundancy_checkbox_${tableIndex}_${rowIdx}`;
+            td.appendChild(checkbox);
+            row.appendChild(td);
+            checkboxesAdded = true;
+          }
+        });
+        return;
+      }
+    });
+    return checkboxesAdded;
+  };
+
   const [selectedFile, setSelectedFile] = useState(null);
   const [underlyingAgreementFiles, setUnderlyingAgreementFiles] = useState([]);
   const [reviewLanguage, setReviewLanguage] = useState('English');
@@ -27,6 +143,7 @@ const ContractReview = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [reviewHistory, setReviewHistory] = useState([]);
   const [aiReviewContent, setAiReviewContent] = useState(null);
+  const [apiRawResponse, setApiRawResponse] = useState(null);
   const aiReviewRef = useRef(null);
   const [originalPdfText, setOriginalPdfText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -162,6 +279,7 @@ taking into account the user's Party Positioning: ${partyPosition}, and Risk Pos
         const result = await response.json();
         let aiText = result.text || result.output || '[No response from AI Review Agent]';
         setAiReviewContent(aiText);
+        setApiRawResponse(result);
       } catch (apiErr) {
         setAiReviewContent('[Error from AI Review Agent: ' + apiErr.message + ']');
         console.error(apiErr);
@@ -208,7 +326,7 @@ taking into account the user's Party Positioning: ${partyPosition}, and Risk Pos
     });
     
     // Try to force add checkboxes
-    const success = forceAddCheckboxes();
+    const success = forceAddCheckboxesNew();
     console.log('Checkbox creation result:', success);
   };
       
@@ -659,7 +777,7 @@ taking into account the user's Party Positioning: ${partyPosition}, and Risk Pos
   // Make the test function available globally for debugging
   useEffect(() => {
     window.testCheckboxCreation = testCheckboxCreation;
-    window.forceAddCheckboxes = forceAddCheckboxes;
+    window.forceAddCheckboxes = forceAddCheckboxesNew;
     return () => {
       delete window.testCheckboxCreation;
       delete window.forceAddCheckboxes;
@@ -898,7 +1016,7 @@ taking into account the user's Party Positioning: ${partyPosition}, and Risk Pos
         attempts++;
         console.log(`Attempt ${attempts} to add checkboxes...`);
         
-        const success = forceAddCheckboxes();
+        const success = forceAddCheckboxesNew();
         
         if (success) {
           console.log('Checkboxes added successfully!');
@@ -1685,7 +1803,7 @@ taking into account the user's Party Positioning: ${partyPosition}, and Risk Pos
                 Saving Contract Data...
               </>
             ) : (
-              'Generate New Contract File'
+              'Next Step'
             )}
           </Button>
           {/* COPY PASTE & SAVE TO DATABASE buttons - HIDDEN */}
