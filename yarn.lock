@@ -2759,6 +2759,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tinymce/tinymce-react@npm:^6.2.1":
+  version: 6.2.1
+  resolution: "@tinymce/tinymce-react@npm:6.2.1"
+  dependencies:
+    prop-types: "npm:^15.6.2"
+  peerDependencies:
+    react: ^19.0.0 || ^18.0.0 || ^17.0.1 || ^16.7.0
+    react-dom: ^19.0.0 || ^18.0.0 || ^17.0.1 || ^16.7.0
+    tinymce: ^7.0.0 || ^6.0.0 || ^5.5.1
+  peerDependenciesMeta:
+    tinymce:
+      optional: true
+  checksum: 10c0/b3889e5866452ced818d2dd2f945e147168da9bfee73ea63f5c8e69dd4cf57e9fa5a4dd9c5dbd4c33288ed80635a8d7c36f4aad24732884806ab45451c44ea1c
+  languageName: node
+  linkType: hard
+
 "@types/aria-query@npm:^5.0.1":
   version: 5.0.4
   resolution: "@types/aria-query@npm:5.0.4"
@@ -4357,6 +4373,7 @@ __metadata:
     "@testing-library/jest-dom": "npm:^6.4.2"
     "@testing-library/react": "npm:^15.0.2"
     "@testing-library/user-event": "npm:^14.5.2"
+    "@tinymce/tinymce-react": "npm:^6.2.1"
     "@vitejs/plugin-react": "npm:^4.5.2"
     bootstrap: "npm:^5.3.3"
     chance: "npm:^1.1.11"
