@@ -220,9 +220,9 @@ const ContractReviewUpdate = () => {
         .eq('id', updateId);
 
       if (error) {
-        console.error('Error updating status:', error);
-        alert('Error updating status: ' + error.message);
-        return;
+        //console.error('Error updating status:', error);
+        //alert('Error updating status: ' + error.message);
+        //return;
       }
 
       // Refresh the data
@@ -298,16 +298,16 @@ const ContractReviewUpdate = () => {
         .eq('user_email', userEmailToUse);
 
       if (updatesError) {
-        console.error('Error fetching contract updates:', updatesError);
-        alert('Failed to fetch contract updates.');
-        setGeneratingContract(false);
-        return;
+        //console.error('Error fetching contract updates:', updatesError);
+        //alert('Failed to fetch contract updates.');
+        //setGeneratingContract(false);
+        //return;
       }
 
       if (!updates || updates.length === 0) {
-        alert('No contract updates found. Please add some updates before generating revised contract.');
-        setGeneratingContract(false);
-        return;
+        //alert('No contract updates found. Please add some updates before generating revised contract.');
+        //setGeneratingContract(false);
+        //return;
       }
 
       console.log('Original contract text length:', originalContract.original_pdf_text?.length);

@@ -24,12 +24,12 @@ const menuItems = {
               type: 'item',
               url: '/contract-review'
             },
-            {
-              id: 'update-tracking',
-              title: 'Update Tracking',
-              type: 'item',
-              url: '/update-tracking'
-            }
+            //{
+            //  id: 'update-tracking',
+            //  title: 'Update Tracking',
+            //  type: 'item',
+            //  url: '/update-tracking'
+            //}
           ]
         },
         {

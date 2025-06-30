@@ -323,7 +323,7 @@ const ContractReviewUpdateTranslation = () => {
 
 
   return (
-    <Card className="mt-5 mx-auto" style={{ maxWidth: 600 }}>
+    <Card className="mt-0 mx-0" style={{ minHeight: '100vh', width: '100vw', maxWidth: '100%', boxSizing: 'border-box', borderRadius: 0, border: 'none', padding: 24 }}>
       <Card.Header>
         <Card.Title as="h4">Document Translation</Card.Title>
       </Card.Header>
