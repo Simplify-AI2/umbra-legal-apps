@@ -20,9 +20,15 @@ const menuItems = {
           children: [
             {
               id: 'contract-review',
-              title: 'Review Contract',
+              title: 'Employment & HR Agreements',
               type: 'item',
               url: '/contract-review'
+            },
+            {
+              id: 'commercial-business-ops',
+              title: 'Commercial & Business Operations Agreements',
+              type: 'item',
+              url: '/contract-review-nda'
             },
             //{
             //  id: 'update-tracking',

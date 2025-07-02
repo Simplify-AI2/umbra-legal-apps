@@ -578,33 +578,7 @@ const ContractReviewUpdate = () => {
     console.log(prompt);
     // 5. Call SIMPLIFY_API_URL
     let contractDraftText = '';
-    try {
-      const response = await fetch(SIMPLIFY_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: prompt,
-          chatId: contractReviewId,
-          uploads: []
-        })
-      });
-      if (!response.ok) {
-        setError('Error from SIMPLIFY_API_URL: ' + response.status);
-        setIsUpdatingContract(false);
-        return;
-      }
-      const result = await response.json();
-      contractDraftText = result.text || result.output || '';
-      if (!contractDraftText) {
-        setError('No contract draft returned from SIMPLIFY_API_URL.');
-        setIsUpdatingContract(false);
-        return;
-      }
-    } catch (err) {
-      setError('Error calling SIMPLIFY_API_URL: ' + err.message);
-      setIsUpdatingContract(false);
-      return;
-    }
+
     // 6. Update master_contract.revised_contract_text and export to .docx
     try {
       const plainTextDraft = stripHtml(contractDraftText);
